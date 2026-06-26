@@ -1,5 +1,6 @@
 // Plantilla de usuarios iniciales de RK Palanca Fontestad.
 // Codirectores = Administradores. Resto = Agentes Comerciales.
+// Los equipos los crean los administradores desde la app.
 
 export const SEED_USERS = [
   { id: 'admin-rober', name: 'Rober', role: 'Codirector', email: 'marketing@inmobiliariapalanca.com', phone: 'CambiarPassword2026' },
@@ -29,20 +30,19 @@ export const SEED_USERS = [
   { id: '692352236', name: 'Yvonne Vidal', role: 'Agente Comercial', email: 'yvidal@inmobiliariapalanca.com', phone: '675992778' },
 ]
 
-// Asignación inicial de grupos (4 equipos de captación)
-export const SEED_GROUPS = [
-  { id: 'team-norte', name: 'Equipo Norte', color: '#cf731b' },
-  { id: 'team-sur', name: 'Equipo Sur', color: '#3b82f6' },
-  { id: 'team-centro', name: 'Equipo Centro', color: '#10b981' },
-  { id: 'team-metro', name: 'Equipo Metropolitano', color: '#a855f7' },
-]
-
 /**
- * Reparte agentes en grupos de forma equilibrada (round-robin) para el seed.
+ * Paleta de colores disponible para los equipos creados desde la app.
  */
-export function assignGroup(userIndex) {
-  return SEED_GROUPS[userIndex % SEED_GROUPS.length].id
-}
+export const GROUP_COLOR_PALETTE = [
+  '#cf731b', // RK orange
+  '#3b82f6', // blue
+  '#10b981', // green
+  '#a855f7', // purple
+  '#ef4444', // red
+  '#f59e0b', // amber
+  '#14b8a6', // teal
+  '#ec4899', // pink
+]
 
 /**
  * Detecta si un usuario es administrador.
