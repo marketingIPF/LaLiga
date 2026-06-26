@@ -10,6 +10,8 @@ import Logros from './views/Logros'
 import RegistrarAccion from './views/RegistrarAccion'
 import Aprobaciones from './views/Aprobaciones'
 import Perfil from './views/Perfil'
+import CambiarPassword from './views/CambiarPassword'
+import GestionEquipos from './views/GestionEquipos'
 
 export default function App() {
   const { firebaseUser, profile, isAdmin, loading } = useAuth()
@@ -35,6 +37,15 @@ export default function App() {
     )
   }
 
+  // Gate: si tiene que cambiar contraseña, no le dejamos pasar a ningún otro sitio
+  if (profile.mustChangePassword === true) {
+    return (
+      <Routes>
+        <Route path="*" element={<CambiarPassword />} />
+      </Routes>
+    )
+  }
+
   return (
     <Routes>
       <Route element={<AppLayout />}>
@@ -42,11 +53,10 @@ export default function App() {
         <Route path="/ranking" element={<Ranking />} />
         <Route path="/logros" element={<Logros />} />
         <Route path="/perfil" element={<Perfil />} />
-        {isAdmin ? (
-          <Route path="/aprobaciones" element={<Aprobaciones />} />
-        ) : (
-          <Route path="/registrar" element={<RegistrarAccion />} />
-        )}
+        <Route path="/cambiar-password" element={<CambiarPassword />} />
+        {isAdmin && <Route path="/aprobaciones" element={<Aprobaciones />} />}
+        {isAdmin && <Route path="/equipos" element={<GestionEquipos />} />}
+        {!isAdmin && <Route path="/registrar" element={<RegistrarAccion />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
