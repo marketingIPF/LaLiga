@@ -1,4 +1,5 @@
-import { Phone, Mail, Users, LogOut, Sun, Moon } from 'lucide-react'
+import { Mail, Users, LogOut, Sun, Moon, KeyRound } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useUsers } from '../hooks/useUsers'
@@ -15,6 +16,7 @@ export default function Perfil() {
   const { theme, toggle } = useTheme()
   const { topLifetime } = useUsers()
   const { groups } = useGroups()
+  const navigate = useNavigate()
 
   const { rank } = useRank({
     points: profile?.points ?? 0,
@@ -48,8 +50,6 @@ export default function Perfil() {
       {/* Info contacto */}
       <GlassCard className="!p-0 overflow-hidden">
         <InfoRow Icon={Mail} label={profile.email} />
-        <Divider />
-        <InfoRow Icon={Phone} label={profile.phone} />
         {group && (
           <>
             <Divider />
@@ -65,6 +65,14 @@ export default function Perfil() {
           <span className="text-sm font-semibold flex-1 text-left">
             Tema {theme === 'dark' ? 'claro' : 'oscuro'}
           </span>
+        </button>
+        <Divider />
+        <button
+          onClick={() => navigate('/cambiar-password')}
+          className="w-full flex items-center gap-3 px-4 py-3.5"
+        >
+          <KeyRound size={18} />
+          <span className="text-sm font-semibold flex-1 text-left">Cambiar contraseña</span>
         </button>
         <Divider />
         <button
