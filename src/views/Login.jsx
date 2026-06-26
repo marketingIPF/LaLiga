@@ -85,7 +85,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-rk-ink/50 dark:text-rk-cream/50">
-          ¿Problemas para entrar? Habla con un codirector.
+          ¿Problemas para entrar? Habla con Almudena o Rober.
         </p>
       </div>
     </div>
