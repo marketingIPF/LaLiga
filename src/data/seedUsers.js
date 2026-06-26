@@ -2,6 +2,8 @@
 // Codirectores = Administradores. Resto = Agentes Comerciales.
 
 export const SEED_USERS = [
+  { id: 'admin-rober', name: 'Rober', role: 'Codirector', email: 'marketing@inmobiliariapalanca.com', phone: 'CambiarPassword2026' },
+  { id: 'admin-almudena', name: 'Almudena Gálvez', role: 'Codirector', email: 'agalvez@inmobiliariapalanca.com', phone: 'CambiarPassword2026' },
   { id: '686387378', name: 'Jose Miguel Palanca', role: 'Codirector', email: 'jose@inmobiliariapalanca.com', phone: '696460043' },
   { id: '686536261', name: 'Javier Palanca', role: 'Codirector', email: 'javi@inmobiliariapalanca.com', phone: '649258584' },
   { id: '689033887', name: 'Alejandro Garcia', role: 'Agente Comercial', email: 'agarcia@inmobiliariapalanca.com', phone: '674054152' },
