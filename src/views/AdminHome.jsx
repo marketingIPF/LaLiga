@@ -66,11 +66,14 @@ export default function AdminHome() {
           label="Histórico total"
           value={formatPoints(totalLifetime)}
         />
-        <MetricCard
-          icon={<Users size={18} className="text-rk-orange" />}
-          label="Equipos"
-          value={groups.length}
-        />
+        <Link to="/equipos" className="block active:scale-[0.98] transition-transform">
+          <MetricCard
+            icon={<Users size={18} className="text-rk-orange" />}
+            label="Equipos"
+            value={groups.length}
+            chevron
+          />
+        </Link>
       </div>
 
       {/* Actividad reciente */}
@@ -111,7 +114,7 @@ export default function AdminHome() {
   )
 }
 
-function MetricCard({ icon, label, value }) {
+function MetricCard({ icon, label, value, chevron }) {
   return (
     <GlassCard className="!p-4">
       <div className="flex items-center justify-between">
@@ -120,7 +123,10 @@ function MetricCard({ icon, label, value }) {
         </span>
         {icon}
       </div>
-      <div className="text-2xl font-black mt-1">{value}</div>
+      <div className="flex items-end justify-between">
+        <div className="text-2xl font-black mt-1">{value}</div>
+        {chevron && <ChevronRight size={16} className="text-rk-ink/30 dark:text-rk-cream/30 mb-1" />}
+      </div>
     </GlassCard>
   )
 }
