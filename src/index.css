@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply font-sans bg-rk-cream text-rk-ink dark:bg-rk-ink dark:text-rk-cream;
+    overscroll-behavior-y: none;
+  }
+
+  /* iOS-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  input,
+  select,
+  textarea {
+    @apply font-sans;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+@layer components {
+  /* Glassmorphism reutilizable */
+  .glass {
+    @apply bg-white/70 dark:bg-rk-ink-card/60 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-glass dark:shadow-glass-dark;
+  }
+
+  .glass-strong {
+    @apply bg-white/85 dark:bg-rk-ink-card/85 backdrop-blur-2xl border border-white/50 dark:border-white/10;
+  }
+
+  /* Tarjeta iOS 26 */
+  .ios-card {
+    @apply glass rounded-3xl p-5;
+  }
+
+  /* Botón primario naranja RK */
+  .btn-primary {
+    @apply bg-rk-orange text-white font-semibold rounded-2xl px-5 py-3
+           active:scale-[0.97] transition-transform shadow-md shadow-rk-orange/20
+           disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  .btn-secondary {
+    @apply glass rounded-2xl px-5 py-3 font-semibold
+           active:scale-[0.97] transition-transform
+           text-rk-ink dark:text-rk-cream;
+  }
+
+  /* Píldora */
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  /* Safe areas */
+  .safe-top {
+    padding-top: max(1rem, var(--safe-top));
+  }
+  .safe-bottom {
+    padding-bottom: max(1rem, var(--safe-bottom));
+  }
+}
+
+/* Transición global iOS-style */
+* {
+  -webkit-touch-callout: none;
+}
+
+button:active {
+  transition: transform 0.1s ease;
+}
