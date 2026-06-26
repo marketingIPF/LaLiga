@@ -49,6 +49,24 @@ export default function AdminHome() {
         </div>
       </Link>
 
+      {/* CTA equipos */}
+      <Link to="/equipos" className="block">
+        <div className="glass rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
+            <Users size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm">Gestionar equipos</div>
+            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
+              {groups.length === 0
+                ? 'Crea tu primer equipo y asigna agentes'
+                : `${groups.length} ${groups.length === 1 ? 'equipo creado' : 'equipos creados'}`}
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
+        </div>
+      </Link>
+
       {/* Métricas agencia */}
       <div className="grid grid-cols-2 gap-3">
         <MetricCard
@@ -66,14 +84,11 @@ export default function AdminHome() {
           label="Histórico total"
           value={formatPoints(totalLifetime)}
         />
-        <Link to="/equipos" className="block active:scale-[0.98] transition-transform">
-          <MetricCard
-            icon={<Users size={18} className="text-rk-orange" />}
-            label="Equipos"
-            value={groups.length}
-            chevron
-          />
-        </Link>
+        <MetricCard
+          icon={<Users size={18} className="text-rk-orange" />}
+          label="Equipos"
+          value={groups.length}
+        />
       </div>
 
       {/* Actividad reciente */}
@@ -114,7 +129,7 @@ export default function AdminHome() {
   )
 }
 
-function MetricCard({ icon, label, value, chevron }) {
+function MetricCard({ icon, label, value }) {
   return (
     <GlassCard className="!p-4">
       <div className="flex items-center justify-between">
@@ -123,10 +138,7 @@ function MetricCard({ icon, label, value, chevron }) {
         </span>
         {icon}
       </div>
-      <div className="flex items-end justify-between">
-        <div className="text-2xl font-black mt-1">{value}</div>
-        {chevron && <ChevronRight size={16} className="text-rk-ink/30 dark:text-rk-cream/30 mb-1" />}
-      </div>
+      <div className="text-2xl font-black mt-1">{value}</div>
     </GlassCard>
   )
 }
