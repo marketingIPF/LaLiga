@@ -5,6 +5,8 @@
 // documentos correspondientes en Firestore. Idempotente: si ya existe
 // el usuario, lo actualiza en lugar de duplicar.
 //
+// Los EQUIPOS no se siembran: los crean los Codirectores desde la app.
+//
 // Uso:
 //   1. Descarga la clave de servicio de Firebase Admin (JSON) desde
 //      Project Settings → Service accounts → Generate new private key.
@@ -12,15 +14,15 @@
 //      (NO la subas al repo — ya está en .gitignore).
 //   3. Ejecuta:   node scripts/seed.mjs
 //
-// Contraseña inicial de cada usuario = los últimos 9 dígitos de su
-// teléfono. Se les pedirá cambiarla en el primer login (opcional).
+// Contraseña inicial de cada usuario = su teléfono (la cambian en
+// el primer login, forzado por mustChangePassword).
 // ====================================================================
 
 import { readFileSync } from 'node:fs'
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
-import { SEED_USERS, SEED_GROUPS, assignGroup, isAdminRole } from '../src/data/seedUsers.js'
+import { SEED_USERS } from '../src/data/seedUsers.js'
 
 const serviceAccount = JSON.parse(readFileSync('./service-account.json', 'utf8'))
 
@@ -53,36 +55,10 @@ async function upsertAuthUser(user) {
   }
 }
 
-async function seedGroups() {
-  console.log('\n📁  Sembrando grupos...')
-  const batch = db.batch()
-  for (const g of SEED_GROUPS) {
-    const ref = db.collection('groups').doc(g.id)
-    batch.set(
-      ref,
-      {
-        name: g.name,
-        color: g.color,
-        totalPoints: 0,
-        memberCount: 0,
-        createdAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    )
-  }
-  await batch.commit()
-  console.log(`   ✓ ${SEED_GROUPS.length} grupos listos`)
-}
-
 async function seedUsers() {
   console.log('\n👥  Sembrando usuarios (Auth + Firestore)...')
-  const groupCounts = {}
 
-  for (let i = 0; i < SEED_USERS.length; i++) {
-    const u = SEED_USERS[i]
-    const groupId = isAdminRole(u.role) ? null : assignGroup(i)
-    if (groupId) groupCounts[groupId] = (groupCounts[groupId] ?? 0) + 1
-
+  for (const u of SEED_USERS) {
     try {
       const status = await upsertAuthUser(u)
 
@@ -92,9 +68,10 @@ async function seedUsers() {
           email: u.email,
           phone: u.phone,
           role: u.role,
-          groupId,
+          groupId: null, // sin equipo de inicio; los admins lo asignan en la app
           points: 0,
           lifetimePoints: 0,
+          mustChangePassword: true,
           createdAt: FieldValue.serverTimestamp(),
           lastActionAt: null,
         },
@@ -106,23 +83,17 @@ async function seedUsers() {
       console.error(`   ✗ Error con ${u.name}:`, e.message)
     }
   }
-
-  // Actualiza el memberCount de cada grupo
-  console.log('\n🔢  Actualizando contadores de grupo...')
-  for (const [groupId, count] of Object.entries(groupCounts)) {
-    await db.collection('groups').doc(groupId).update({ memberCount: count })
-  }
 }
 
 async function main() {
   console.log('🚀 La Liga · Seed inicial')
   console.log('   Inmobiliaria RK Palanca Fontestad')
-  await seedGroups()
   await seedUsers()
   console.log('\n✅  Seed completado.')
   console.log('\n📲  Credenciales iniciales:')
   console.log('   email    → email corporativo del agente')
-  console.log('   password → su número de teléfono (se cambia en el primer login)\n')
+  console.log('   password → su número de teléfono (forzado a cambiar en el primer login)')
+  console.log('\n🏆  Los equipos se crean desde la app (panel Codirector).\n')
   process.exit(0)
 }
 
