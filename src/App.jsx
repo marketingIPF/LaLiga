@@ -15,6 +15,7 @@ import Perfil from './views/Perfil'
 import CambiarPassword from './views/CambiarPassword'
 import GestionEquipos from './views/GestionEquipos'
 import GestionAgentes from './views/GestionAgentes'
+import Notificaciones from './views/Notificaciones'
 
 export default function App() {
   const { firebaseUser, profile, isAdmin, loading } = useAuth()
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/logros" element={<Logros />} />
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/cambiar-password" element={<CambiarPassword />} />
+        <Route path="/notificaciones" element={<Notificaciones />} />
         {isAdmin && <Route path="/aprobaciones" element={<Aprobaciones />} />}
         {isAdmin && <Route path="/equipos" element={<GestionEquipos />} />}
         {isAdmin && <Route path="/agentes" element={<GestionAgentes />} />}
