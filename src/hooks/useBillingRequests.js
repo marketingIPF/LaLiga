@@ -1,0 +1,135 @@
+import { useEffect, useState } from 'react'
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  doc,
+  runTransaction,
+  increment,
+} from 'firebase/firestore'
+import { db, COL } from '../lib/firebase'
+
+/**
+ * Listado en tiempo real de facturaciones (filtrable por estado y/o agente).
+ */
+export function useBillingRequests({ userId = null, status = null } = {}) {
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const constraints = []
+    if (userId) constraints.push(where('userId', '==', userId))
+    if (status) constraints.push(where('status', '==', status))
+    constraints.push(orderBy('createdAt', 'desc'))
+
+    const q = query(collection(db, COL.billingRequests), ...constraints)
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        setLoading(false)
+      },
+      (err) => {
+        console.error('useBillingRequests error', err)
+        setLoading(false)
+      }
+    )
+    return unsub
+  }, [userId, status])
+
+  return { requests, loading }
+}
+
+/**
+ * Crear nueva facturación (el agente reporta cantidad, queda pending).
+ */
+export async function submitBillingRequest({ user, amount, notes = '' }) {
+  const value = Number(amount)
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error('Importe no válido')
+  }
+
+  return addDoc(collection(db, COL.billingRequests), {
+    userId: user.id,
+    userName: user.name,
+    userEmail: user.email,
+    groupId: user.groupId ?? null,
+    amount: value,
+    notes: notes.trim(),
+    status: 'pending',
+    multiplier: null,
+    finalAmount: null,
+    createdAt: serverTimestamp(),
+    reviewedAt: null,
+    reviewedBy: null,
+    reviewNote: '',
+  })
+}
+
+/**
+ * Aprobar una facturación con un multiplicador (ruleta: 0.5, 1, 2).
+ * Suma finalAmount al agente (periodBilling + totalBilling) y al grupo.
+ */
+export async function approveBillingRequest({ requestId, adminUid, multiplier }) {
+  if (![0.5, 1, 2].includes(multiplier)) {
+    throw new Error('Multiplicador no válido')
+  }
+
+  const reqRef = doc(db, COL.billingRequests, requestId)
+
+  await runTransaction(db, async (tx) => {
+    const reqSnap = await tx.get(reqRef)
+    if (!reqSnap.exists()) throw new Error('Facturación no encontrada')
+    const req = reqSnap.data()
+    if (req.status !== 'pending') throw new Error('Ya fue revisada')
+
+    const finalAmount = Math.round(req.amount * multiplier * 100) / 100
+
+    const userRef = doc(db, COL.users, req.userId)
+    const userSnap = await tx.get(userRef)
+    if (!userSnap.exists()) throw new Error('Agente no encontrado')
+
+    tx.update(userRef, {
+      periodBilling: increment(finalAmount),
+      totalBilling: increment(finalAmount),
+      lastActionAt: serverTimestamp(),
+    })
+
+    if (req.groupId) {
+      const groupRef = doc(db, COL.groups, req.groupId)
+      tx.update(groupRef, {
+        totalBilling: increment(finalAmount),
+      })
+    }
+
+    tx.update(reqRef, {
+      status: 'approved',
+      multiplier,
+      finalAmount,
+      reviewedAt: serverTimestamp(),
+      reviewedBy: adminUid,
+    })
+  })
+}
+
+/**
+ * Rechazar una facturación.
+ */
+export async function rejectBillingRequest({ requestId, adminUid, note = '' }) {
+  const reqRef = doc(db, COL.billingRequests, requestId)
+  await runTransaction(db, async (tx) => {
+    const reqSnap = await tx.get(reqRef)
+    if (!reqSnap.exists()) throw new Error('Facturación no encontrada')
+    if (reqSnap.data().status !== 'pending') throw new Error('Ya fue revisada')
+    tx.update(reqRef, {
+      status: 'rejected',
+      reviewedAt: serverTimestamp(),
+      reviewedBy: adminUid,
+      reviewNote: note,
+    })
+  })
+}
