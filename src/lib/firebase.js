@@ -20,5 +20,6 @@ export const COL = {
   users: 'users',
   groups: 'groups',
   actionRequests: 'actionRequests',
+  billingRequests: 'billingRequests',
   achievements: 'achievements',
 }
