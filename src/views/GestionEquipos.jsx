@@ -24,6 +24,7 @@ import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
 import { isAdminRole, GROUP_COLOR_PALETTE } from '../data/seedUsers'
 import { formatPoints } from '../lib/utils'
+import { notifyTeamAssignment } from '../lib/notifications'
 import Header from '../components/layout/Header'
 import GlassCard from '../components/ui/GlassCard'
 
@@ -433,6 +434,12 @@ function AsignarAgenteModal({ group, agents, onClose }) {
         batch.update(doc(db, COL.groups, oldGroupId), { memberCount: increment(-1) })
       }
       await batch.commit()
+
+      // Notificación al agente (best-effort)
+      notifyTeamAssignment({
+        userId: agent.id,
+        teamName: group.name,
+      }).catch((e) => console.error('notifyTeamAssignment failed', e))
     } finally {
       setBusy(null)
     }
