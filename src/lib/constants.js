@@ -74,18 +74,18 @@ export const ACTION_LIST = Object.values(ACTION_TYPES)
 // --------------------------------------------------------------------
 // Rangos
 // --------------------------------------------------------------------
-// Prospectador → entry level (0-49)
-// Consolidado  → 50-149
-// Sénior       → 150-299
-// Élite        → 300+
-// Embajador    → reservado al líder histórico de la agencia (lifetime top)
+// Prospectador → entry level (0-149)
+// Consolidado  → 150-399
+// Sénior       → 400-799
+// Élite        → 800+
+// Embajador    → reservado al líder histórico de la agencia (lifetime top, ≥1000)
 
 export const RANKS = {
   prospectador: {
     id: 'prospectador',
     label: 'Prospectador',
     min: 0,
-    max: 49,
+    max: 149,
     color: 'rank-prospectador',
     gradient: 'from-slate-400 to-slate-500',
     description: 'Construyendo los primeros cimientos.',
@@ -93,8 +93,8 @@ export const RANKS = {
   consolidado: {
     id: 'consolidado',
     label: 'Consolidado',
-    min: 50,
-    max: 149,
+    min: 150,
+    max: 399,
     color: 'rank-consolidado',
     gradient: 'from-blue-400 to-blue-600',
     description: 'Ritmo sólido y constante.',
@@ -102,8 +102,8 @@ export const RANKS = {
   senior: {
     id: 'senior',
     label: 'Sénior',
-    min: 150,
-    max: 299,
+    min: 400,
+    max: 799,
     color: 'rank-senior',
     gradient: 'from-violet-400 to-purple-600',
     description: 'Referente del equipo.',
@@ -111,7 +111,7 @@ export const RANKS = {
   elite: {
     id: 'elite',
     label: 'Élite',
-    min: 300,
+    min: 800,
     max: Infinity,
     color: 'rank-elite',
     gradient: 'from-rk-orange to-amber-500',
@@ -139,13 +139,13 @@ export function computeRank({ points = 0, lifetimePoints = 0, topLifetimeInAgenc
   if (
     lifetimePoints > 0 &&
     lifetimePoints >= topLifetimeInAgency &&
-    topLifetimeInAgency >= 300
+    topLifetimeInAgency >= 1000
   ) {
     return RANKS.embajador
   }
-  if (points >= 300) return RANKS.elite
-  if (points >= 150) return RANKS.senior
-  if (points >= 50) return RANKS.consolidado
+  if (points >= 800) return RANKS.elite
+  if (points >= 400) return RANKS.senior
+  if (points >= 150) return RANKS.consolidado
   return RANKS.prospectador
 }
 
@@ -153,30 +153,30 @@ export function computeRank({ points = 0, lifetimePoints = 0, topLifetimeInAgenc
  * Devuelve el siguiente rango y el progreso (0-1) hacia él.
  */
 export function getNextRankProgress(points = 0) {
-  if (points >= 300) {
+  if (points >= 800) {
     return { next: null, progress: 1, pointsToNext: 0, current: RANKS.elite }
   }
-  if (points >= 150) {
+  if (points >= 400) {
     return {
       next: RANKS.elite,
       current: RANKS.senior,
-      progress: (points - 150) / (300 - 150),
-      pointsToNext: 300 - points,
+      progress: (points - 400) / (800 - 400),
+      pointsToNext: 800 - points,
     }
   }
-  if (points >= 50) {
+  if (points >= 150) {
     return {
       next: RANKS.senior,
       current: RANKS.consolidado,
-      progress: (points - 50) / (150 - 50),
-      pointsToNext: 150 - points,
+      progress: (points - 150) / (400 - 150),
+      pointsToNext: 400 - points,
     }
   }
   return {
     next: RANKS.consolidado,
     current: RANKS.prospectador,
-    progress: points / 50,
-    pointsToNext: 50 - points,
+    progress: points / 150,
+    pointsToNext: 150 - points,
   }
 }
 
