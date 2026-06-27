@@ -65,7 +65,7 @@ export const ACTION_TYPES = {
     shortLabel: 'RRSS',
     points: 15,
     icon: '📱',
-    description: 'Publicación en redes sociales de la agencia.',
+    description: 'Publicación en mi Instagram / WhatsApp.',
   },
 }
 
