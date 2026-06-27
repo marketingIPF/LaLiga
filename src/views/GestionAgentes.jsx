@@ -54,7 +54,7 @@ export default function GestionAgentes() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <Header title="Agentes" subtitle="Gestión Codirector" />
+      <Header title="Agentes" subtitle="Gestión Admin" />
 
       <button
         onClick={() => setShowAdd(true)}
@@ -73,7 +73,7 @@ export default function GestionAgentes() {
         </GlassCard>
         <GlassCard className="!p-3 text-center">
           <div className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
-            Codirectores
+            Admins
           </div>
           <div className="text-2xl font-black mt-0.5">{totalAdmins}</div>
         </GlassCard>
@@ -252,7 +252,7 @@ function AddAgentModal({ groups, onClose }) {
                   <RoleButton
                     active={role === 'Codirector'}
                     onClick={() => setRole('Codirector')}
-                    label="Codirector"
+                    label="Admin"
                   />
                 </div>
               </div>
