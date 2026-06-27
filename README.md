@@ -1,188 +1,63 @@
-# 🏆 La Liga · RK Palanca Fontestad
+# 🔔 La Liga — Notificaciones in-app (Fase 1)
 
-Sistema de gamificación para el equipo comercial de RK Palanca Fontestad. PWA mobile-first con React + Vite + Tailwind + Firebase.
+## Qué hace este bundle
 
----
+Añade un sistema completo de notificaciones in-app a La Liga:
 
-## 📂 Estructura del proyecto
+- **Campana en la cabecera** con punto naranja cuando hay algo nuevo
+- **Pantalla `/notificaciones`** con histórico, ordenada por fecha
+- **Triggers automáticos** en:
+  - Agente envía acción → notifica a TODOS los admins
+  - Agente envía facturación → notifica a TODOS los admins
+  - Admin aprueba/rechaza acción → notifica al agente
+  - Admin aprueba/rechaza facturación → notifica al agente
+  - Admin asigna a un equipo → notifica al agente
+  - Agente entra en el top 3 del ranking → notifica al agente
 
-```
-la-liga/
-├── public/                       # Favicon, iconos PWA
-├── scripts/
-│   └── seed.mjs                  # Crea usuarios en Auth + Firestore
-├── src/
-│   ├── assets/
-│   ├── components/
-│   │   ├── layout/               # AppLayout, BottomNav, Header
-│   │   ├── ui/                   # GlassCard, RankBadge, CircularProgress, Avatar
-│   │   ├── admin/
-│   │   └── agent/
-│   ├── context/
-│   │   ├── AuthContext.jsx       # Firebase Auth + perfil Firestore
-│   │   └── ThemeContext.jsx      # Light / Dark mode
-│   ├── data/
-│   │   └── seedUsers.js          # 23 usuarios iniciales + grupos
-│   ├── hooks/
-│   │   ├── useRank.js            # Cálculo de rango y progreso
-│   │   ├── useUsers.js
-│   │   ├── useGroups.js
-│   │   └── useActionRequests.js  # CRUD de solicitudes (con transacciones)
-│   ├── lib/
-│   │   ├── constants.js          # Catálogo de acciones, rangos, logros
-│   │   ├── firebase.js           # init de Firebase
-│   │   └── utils.js
-│   ├── views/
-│   │   ├── Login.jsx
-│   │   ├── Dashboard.jsx         # Home agente
-│   │   ├── AdminHome.jsx         # Home codirector
-│   │   ├── RegistrarAccion.jsx   # Form de nueva acción
-│   │   ├── Aprobaciones.jsx      # Panel admin
-│   │   ├── Ranking.jsx           # El Boletín
-│   │   ├── Logros.jsx            # Wall of Fame
-│   │   └── Perfil.jsx
-│   ├── App.jsx                   # Router con guards
-│   ├── main.jsx
-│   └── index.css                 # Tailwind + estilos iOS 26
-├── .env.example
-├── firestore.rules               # Reglas de seguridad
-├── index.html
-├── package.json
-├── postcss.config.js
-├── tailwind.config.js
-└── vite.config.js
-```
+## Archivos en este bundle
 
----
+### Nuevos (sustituir si existen)
+- `src/lib/notifications.js` — helpers de creación
+- `src/hooks/useNotifications.js` — listener en tiempo real
+- `src/components/ui/NotificationBell.jsx` — campana con badge
+- `src/views/Notificaciones.jsx` — pantalla de listado
 
-## 🚀 Setup inicial
+### Modificados (sustituir el existente en GitHub)
+- `src/lib/firebase.js` — añade `notifications` a COL
+- `src/lib/admin.js` — limpia el flag `inTop3` y notifs en los resets
+- `src/hooks/useActionRequests.js` — dispara notifs en submit/approve/reject + check top3
+- `src/hooks/useBillingRequests.js` — dispara notifs en submit/approve/reject
+- `src/components/layout/Header.jsx` — añade NotificationBell
+- `src/views/GestionEquipos.jsx` — dispara notif al asignar agente
+- `src/App.jsx` — añade ruta `/notificaciones`
+- `firestore.rules` — añade reglas de la colección `notifications`
 
-### 1) Instalar dependencias
+## Cómo desplegar
 
-```bash
-npm install
-```
+1. **Sube todos los archivos** del bundle a las mismas rutas en el repo `LaLiga` (drag & drop desde GitHub web, o git push desde Codespaces).
 
-### 2) Crear el proyecto en Firebase
+2. **Publica las nuevas reglas de Firestore** desde la consola de Firebase:
+   - Ve a Firestore → Rules
+   - Pega el contenido de `firestore.rules` y publica
+   - (O ejecuta `firebase deploy --only firestore:rules` si tienes el CLI)
 
-1. Crea un proyecto en [console.firebase.google.com](https://console.firebase.google.com).
-2. Activa **Authentication → Email/Password**.
-3. Activa **Cloud Firestore** (modo producción).
-4. Copia las credenciales en `.env.local` (basado en `.env.example`):
+3. **Espera el deploy de Vercel** (~1-2 min) y entra a la app.
 
-```
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-```
+## Probarlo
 
-### 3) Sembrar los usuarios iniciales
+- Inicia sesión como **agente** → registra una acción.
+- Cierra sesión, inicia como **admin** → verás el punto naranja en la campana.
+- Tap en la campana → ves la notificación "Nueva solicitud".
+- Tap en la notif → te lleva a `/aprobaciones`.
+- Apruebas la acción → al volver al agente verás "Acción aprobada (+X pts)".
 
-Descarga el **service account JSON** desde Firebase (Project Settings → Service accounts → Generate new private key), guárdalo como `service-account.json` en la raíz, y ejecuta:
+## Limitaciones (Fase 1)
 
-```bash
-node scripts/seed.mjs
-```
+- **Sólo funcionan con la app abierta.** Cuando entras a La Liga ves el punto naranja en la campana. Pero la app NO suena ni vibra cuando está cerrada.
+- Para push real (vibración aunque el móvil esté bloqueado) → Fase 2: FCM + service worker + función serverless. Necesita 1-2 sesiones dedicadas y plan Blaze de Firebase.
 
-Esto crea 23 cuentas en Firebase Auth (UID = ID del agente) y los documentos en Firestore con puntos a cero. La **contraseña inicial** de cada usuario es su número de teléfono.
+## Notas técnicas
 
-### 4) Desplegar las reglas de seguridad
-
-```bash
-firebase login
-firebase init firestore     # selecciona el proyecto, acepta firestore.rules
-firebase deploy --only firestore:rules
-```
-
-### 5) Arrancar en local
-
-```bash
-npm run dev
-```
-
----
-
-## 🎯 Lógica de puntos y rangos
-
-### Acciones (en `src/lib/constants.js`)
-
-| Acción                         | Puntos |
-| ------------------------------ | -----: |
-| Captación de propiedad         |    100 |
-| Venta cerrada                  |    150 |
-| Captación en exclusiva (bonus) |    +50 |
-| Reseña positiva                |     30 |
-| Referido capta/vende           |     40 |
-| Formación interna              |     20 |
-| Asistencia reunión             |     10 |
-| Publicar RRSS                  |     15 |
-
-### Rangos
-
-| Rango        | Puntos del periodo                               |
-| ------------ | ------------------------------------------------ |
-| Prospectador | 0 – 49                                           |
-| Consolidado  | 50 – 149                                         |
-| Sénior       | 150 – 299                                        |
-| Élite        | 300+                                             |
-| Embajador    | Líder histórico de la agencia (mayor lifetime)   |
-
-El rango se calcula en `computeRank()` (puro, testeable). El hook `useRank()` lo expone junto al progreso hacia el siguiente nivel.
-
----
-
-## 🔐 Modelo de seguridad
-
-- **UID de Firebase Auth = ID del documento `users/{uid}`**. El seed garantiza esa correspondencia.
-- Reglas en `firestore.rules`:
-  - Cualquier autenticado puede **leer** users / groups / actionRequests (necesario para el ranking).
-  - Un agente solo puede **crear** `actionRequests` con `userId == su UID` y `status='pending'`.
-  - Solo un Codirector (rol leído desde `users/{uid}.role`) puede aprobar/rechazar y modificar `points` / `lifetimePoints`.
-  - La aprobación es **transaccional** (`runTransaction`) — suma atómica al agente y al grupo.
-
----
-
-## 🎨 Sistema de diseño
-
-- **Tipografía**: Montserrat (preload desde Google Fonts en `index.html`).
-- **Colores**: naranja `#cf731b`, negro `#0a0a0a`, blanco/crema `#faf5ee`. Definidos en `tailwind.config.js` bajo `colors.rk`.
-- **Dark mode**: `class` strategy. Toggle persistente en `localStorage` (`ThemeContext`).
-- **Glassmorphism**: clase `.glass` y `.glass-strong` en `index.css` — `backdrop-blur-xl` + `bg-white/70` claro / `bg-rk-ink-card/60` oscuro.
-- **Border radius**: `rounded-3xl` y `rounded-4xl` para look iOS 26.
-- **Bottom nav**: tab central tipo FAB elevado, distinto por rol (Agentes ven *Registrar*, Codirectores ven *Aprobar*).
-- **Safe areas iOS**: variables `--safe-top` / `--safe-bottom` con `env(safe-area-inset-*)`.
-
----
-
-## 🧩 Componentes clave
-
-| Componente             | Descripción                                                        |
-| ---------------------- | ------------------------------------------------------------------ |
-| `GlassCard`            | Tarjeta base con glassmorphism + radio iOS 26.                     |
-| `RankBadge`            | Insignia con gradiente según rango.                                |
-| `CircularProgress`     | Anillo SVG estilo Apple Watch (acepta children centrados).         |
-| `BottomNav`            | Nav inferior con tab central FAB; cambia según rol.                |
-| `Avatar`               | Avatar con iniciales fallback.                                     |
-
----
-
-## 📲 PWA
-
-El plugin `vite-plugin-pwa` está configurado en `vite.config.js`. Añade los iconos en `public/icon-192.png` y `public/icon-512.png` para completar el manifest. El service worker se auto-actualiza.
-
----
-
-## 🛠️ Próximos pasos sugeridos
-
-- [ ] Añadir iconos PWA (192/512px) con la marca RK Palanca.
-- [ ] Configurar Cloud Function de reseteo trimestral de `points` (manteniendo `lifetimePoints`).
-- [ ] Notificaciones push al codirector cuando llega una nueva solicitud.
-- [ ] Sección de historial de logros (ahora se calculan en cliente; podrían persistirse).
-- [ ] Tests unitarios de `computeRank()` y `useRank()`.
-
----
-
-**Build by Rober · RK Palanca Fontestad · 2026**
+- **Top 3 detection**: se usa un flag `inTop3` en cada doc de usuario. Después de cada aprobación, el cliente del admin recalcula el top 3 actual, compara con los que tenían el flag, y notifica a los nuevos entrantes. Los resets de periodo limpian el flag automáticamente.
+- **Sin índices compuestos**: las queries usan filtros simples y ordenan en cliente (mismo patrón que `actionRequests` / `billingRequests`).
+- **Auto-mark-all-as-read**: al abrir la pantalla de notificaciones, todas se marcan como leídas tras 800ms. Hay también botón "Marcar todas" arriba.
