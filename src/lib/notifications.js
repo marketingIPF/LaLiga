@@ -197,13 +197,13 @@ export async function notifyBillingPending({ agentName, amount }) {
   })
 }
 
-export async function notifyBillingApproved({ userId, amount, multiplier, finalAmount }) {
-  const mLabel = multiplier === 0.5 ? '½' : `×${multiplier}`
+export async function notifyBillingApproved({ userId, amount, finalAmount }) {
+  // finalAmount === amount ahora porque el bonus se aplica fuera de la app.
   return createNotification({
     userId,
     type: 'billing_approved',
     title: '💰 Facturación aprobada',
-    message: `${formatEur(amount)} con multiplicador ${mLabel} → ${formatEur(finalAmount)}`,
+    message: `Te han validado ${formatEur(finalAmount ?? amount)}.`,
     link: '/',
   })
 }
