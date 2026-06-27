@@ -94,13 +94,10 @@ export async function submitBillingRequest({ user, amount, notes = '' }) {
 }
 
 /**
- * Aprobar una facturación con un multiplicador (ruleta: 0.5, 1, 2).
+ * Aprobar una facturación. El importe que entra es el reportado por el agente.
+ * El bonus de la ruleta es físico (en oficina), fuera de la app.
  */
-export async function approveBillingRequest({ requestId, adminUid, multiplier }) {
-  if (![0.5, 1, 2].includes(multiplier)) {
-    throw new Error('Multiplicador no válido')
-  }
-
+export async function approveBillingRequest({ requestId, adminUid }) {
   const reqRef = doc(db, COL.billingRequests, requestId)
   let approvedData = null
 
@@ -110,7 +107,9 @@ export async function approveBillingRequest({ requestId, adminUid, multiplier })
     const req = reqSnap.data()
     if (req.status !== 'pending') throw new Error('Ya fue revisada')
 
-    const finalAmount = Math.round(req.amount * multiplier * 100) / 100
+    // El bonus de la ruleta se aplica fuera de la app, en la oficina.
+    // En la app, el importe que entra al sistema es el reportado.
+    const finalAmount = req.amount
 
     const userRef = doc(db, COL.users, req.userId)
     const userSnap = await tx.get(userRef)
@@ -131,20 +130,19 @@ export async function approveBillingRequest({ requestId, adminUid, multiplier })
 
     tx.update(reqRef, {
       status: 'approved',
-      multiplier,
+      multiplier: 1,
       finalAmount,
       reviewedAt: serverTimestamp(),
       reviewedBy: adminUid,
     })
 
-    approvedData = { ...req, finalAmount, multiplier }
+    approvedData = { ...req, finalAmount }
   })
 
   if (approvedData) {
     notifyBillingApproved({
       userId: approvedData.userId,
       amount: approvedData.amount,
-      multiplier: approvedData.multiplier,
       finalAmount: approvedData.finalAmount,
     }).catch((e) => console.error('notifyBillingApproved failed', e))
   }
