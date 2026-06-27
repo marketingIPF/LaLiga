@@ -11,6 +11,12 @@ import {
   increment,
 } from 'firebase/firestore'
 import { db, COL } from '../lib/firebase'
+import {
+  notifyBillingPending,
+  notifyBillingApproved,
+  notifyBillingRejected,
+  checkAndNotifyTop3,
+} from '../lib/notifications'
 
 function tsMs(value) {
   if (!value) return 0
@@ -63,7 +69,7 @@ export async function submitBillingRequest({ user, amount, notes = '' }) {
     throw new Error('Importe no válido')
   }
 
-  return addDoc(collection(db, COL.billingRequests), {
+  const result = await addDoc(collection(db, COL.billingRequests), {
     userId: user.id,
     userName: user.name,
     userEmail: user.email,
@@ -78,6 +84,13 @@ export async function submitBillingRequest({ user, amount, notes = '' }) {
     reviewedBy: null,
     reviewNote: '',
   })
+
+  // Notificar a admins (best-effort, no bloquea)
+  notifyBillingPending({ agentName: user.name, amount: value }).catch((e) =>
+    console.error('notifyBillingPending failed', e)
+  )
+
+  return result
 }
 
 /**
@@ -89,6 +102,7 @@ export async function approveBillingRequest({ requestId, adminUid, multiplier })
   }
 
   const reqRef = doc(db, COL.billingRequests, requestId)
+  let approvedData = null
 
   await runTransaction(db, async (tx) => {
     const reqSnap = await tx.get(reqRef)
@@ -122,7 +136,18 @@ export async function approveBillingRequest({ requestId, adminUid, multiplier })
       reviewedAt: serverTimestamp(),
       reviewedBy: adminUid,
     })
+
+    approvedData = { ...req, finalAmount, multiplier }
   })
+
+  if (approvedData) {
+    notifyBillingApproved({
+      userId: approvedData.userId,
+      amount: approvedData.amount,
+      multiplier: approvedData.multiplier,
+      finalAmount: approvedData.finalAmount,
+    }).catch((e) => console.error('notifyBillingApproved failed', e))
+  }
 }
 
 /**
@@ -181,15 +206,26 @@ export async function updateApprovedBillingMultiplier({ requestId, adminUid, new
  */
 export async function rejectBillingRequest({ requestId, adminUid, note = '' }) {
   const reqRef = doc(db, COL.billingRequests, requestId)
+  let rejectedData = null
+
   await runTransaction(db, async (tx) => {
     const reqSnap = await tx.get(reqRef)
     if (!reqSnap.exists()) throw new Error('Facturación no encontrada')
-    if (reqSnap.data().status !== 'pending') throw new Error('Ya fue revisada')
+    const data = reqSnap.data()
+    if (data.status !== 'pending') throw new Error('Ya fue revisada')
     tx.update(reqRef, {
       status: 'rejected',
       reviewedAt: serverTimestamp(),
       reviewedBy: adminUid,
       reviewNote: note,
     })
+    rejectedData = data
   })
+
+  if (rejectedData) {
+    notifyBillingRejected({
+      userId: rejectedData.userId,
+      amount: rejectedData.amount,
+    }).catch((e) => console.error('notifyBillingRejected failed', e))
+  }
 }
