@@ -126,6 +126,57 @@ export async function approveBillingRequest({ requestId, adminUid, multiplier })
 }
 
 /**
+ * Editar el multiplicador de una facturación YA APROBADA.
+ * Calcula la diferencia entre el nuevo final y el anterior, y la aplica
+ * de forma atómica al agente y al equipo. Conserva reviewedAt/reviewedBy
+ * originales como histórico y añade editedAt/editedBy.
+ */
+export async function updateApprovedBillingMultiplier({ requestId, adminUid, newMultiplier }) {
+  if (![0.5, 1, 2].includes(newMultiplier)) {
+    throw new Error('Multiplicador no válido')
+  }
+
+  const reqRef = doc(db, COL.billingRequests, requestId)
+
+  await runTransaction(db, async (tx) => {
+    const reqSnap = await tx.get(reqRef)
+    if (!reqSnap.exists()) throw new Error('Facturación no encontrada')
+    const req = reqSnap.data()
+    if (req.status !== 'approved') {
+      throw new Error('Solo se pueden editar las facturaciones aprobadas')
+    }
+    if (req.multiplier === newMultiplier) return // sin cambios
+
+    const oldFinal = req.finalAmount ?? 0
+    const newFinal = Math.round(req.amount * newMultiplier * 100) / 100
+    const delta = newFinal - oldFinal
+
+    const userRef = doc(db, COL.users, req.userId)
+    const userSnap = await tx.get(userRef)
+    if (!userSnap.exists()) throw new Error('Agente no encontrado')
+
+    tx.update(userRef, {
+      periodBilling: increment(delta),
+      totalBilling: increment(delta),
+    })
+
+    if (req.groupId) {
+      const groupRef = doc(db, COL.groups, req.groupId)
+      tx.update(groupRef, {
+        totalBilling: increment(delta),
+      })
+    }
+
+    tx.update(reqRef, {
+      multiplier: newMultiplier,
+      finalAmount: newFinal,
+      editedAt: serverTimestamp(),
+      editedBy: adminUid,
+    })
+  })
+}
+
+/**
  * Rechazar una facturación.
  */
 export async function rejectBillingRequest({ requestId, adminUid, note = '' }) {
