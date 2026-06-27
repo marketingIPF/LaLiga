@@ -9,6 +9,8 @@ import Ranking from './views/Ranking'
 import Logros from './views/Logros'
 import RegistrarAccion from './views/RegistrarAccion'
 import Aprobaciones from './views/Aprobaciones'
+import RegistrarFacturacion from './views/RegistrarFacturacion'
+import AprobarFacturacion from './views/AprobarFacturacion'
 import Perfil from './views/Perfil'
 import CambiarPassword from './views/CambiarPassword'
 import GestionEquipos from './views/GestionEquipos'
@@ -56,7 +58,9 @@ export default function App() {
         <Route path="/cambiar-password" element={<CambiarPassword />} />
         {isAdmin && <Route path="/aprobaciones" element={<Aprobaciones />} />}
         {isAdmin && <Route path="/equipos" element={<GestionEquipos />} />}
+        {isAdmin && <Route path="/facturacion-aprobar" element={<AprobarFacturacion />} />}
         {!isAdmin && <Route path="/registrar" element={<RegistrarAccion />} />}
+        {!isAdmin && <Route path="/facturacion" element={<RegistrarFacturacion />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
