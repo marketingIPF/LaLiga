@@ -1,11 +1,26 @@
 import { writeBatch, doc, getDocs, collection } from 'firebase/firestore'
 import { db, COL } from './firebase'
 
+const BATCH_SIZE = 400 // por seguridad, por debajo del límite de 500 de Firestore
+
+async function commitChunks(operations) {
+  for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+    const chunk = operations.slice(i, i + BATCH_SIZE)
+    const batch = writeBatch(db)
+    for (const op of chunk) {
+      if (op.type === 'update') batch.update(op.ref, op.data)
+      else if (op.type === 'delete') batch.delete(op.ref)
+    }
+    await batch.commit()
+  }
+}
+
 /**
- * Resetea TODOS los puntos del periodo y facturación del periodo a cero
- * para todos los usuarios y grupos. No toca lifetimePoints ni totalBilling.
+ * Reset SOLO del periodo: pone a cero los puntos y facturación del periodo
+ * (tanto en usuarios como en equipos). Conserva lifetimePoints, totalBilling
+ * y todas las solicitudes (aprobadas, rechazadas, pendientes).
  *
- * Solo debe ejecutarlo un admin. Las reglas de Firestore lo refuerzan.
+ * Pensado para uso en producción: inicio de trimestre, mes, etc.
  */
 export async function resetPeriod() {
   const [usersSnap, groupsSnap] = await Promise.all([
@@ -13,32 +28,73 @@ export async function resetPeriod() {
     getDocs(collection(db, COL.groups)),
   ])
 
-  // Firestore batch tiene un límite de 500 operaciones. Para 25 users + N grupos
-  // estamos muy por debajo, pero por seguridad partimos en bloques de 400.
-  const allWrites = []
+  const ops = []
   for (const u of usersSnap.docs) {
-    allWrites.push({
+    ops.push({
+      type: 'update',
       ref: doc(db, COL.users, u.id),
       data: { points: 0, periodBilling: 0 },
     })
   }
   for (const g of groupsSnap.docs) {
-    allWrites.push({
+    ops.push({
+      type: 'update',
       ref: doc(db, COL.groups, g.id),
       data: { totalPoints: 0, totalBilling: 0 },
     })
   }
-
-  const chunks = []
-  for (let i = 0; i < allWrites.length; i += 400) {
-    chunks.push(allWrites.slice(i, i + 400))
-  }
-
-  for (const chunk of chunks) {
-    const batch = writeBatch(db)
-    for (const w of chunk) batch.update(w.ref, w.data)
-    await batch.commit()
-  }
-
+  await commitChunks(ops)
   return { users: usersSnap.size, groups: groupsSnap.size }
+}
+
+/**
+ * Reset TOTAL: además del periodo, borra el histórico (lifetimePoints,
+ * totalBilling) y elimina todas las solicitudes (acciones y facturación).
+ *
+ * Pensado para pruebas / setup inicial. NO conserva ningún dato de actividad.
+ * No toca usuarios, equipos ni roles.
+ */
+export async function resetAll() {
+  const [usersSnap, groupsSnap, actionsSnap, billingSnap] = await Promise.all([
+    getDocs(collection(db, COL.users)),
+    getDocs(collection(db, COL.groups)),
+    getDocs(collection(db, COL.actionRequests)),
+    getDocs(collection(db, COL.billingRequests)),
+  ])
+
+  const ops = []
+  for (const u of usersSnap.docs) {
+    ops.push({
+      type: 'update',
+      ref: doc(db, COL.users, u.id),
+      data: {
+        points: 0,
+        lifetimePoints: 0,
+        periodBilling: 0,
+        totalBilling: 0,
+        lastActionAt: null,
+      },
+    })
+  }
+  for (const g of groupsSnap.docs) {
+    ops.push({
+      type: 'update',
+      ref: doc(db, COL.groups, g.id),
+      data: { totalPoints: 0, totalBilling: 0 },
+    })
+  }
+  for (const a of actionsSnap.docs) {
+    ops.push({ type: 'delete', ref: doc(db, COL.actionRequests, a.id) })
+  }
+  for (const b of billingSnap.docs) {
+    ops.push({ type: 'delete', ref: doc(db, COL.billingRequests, b.id) })
+  }
+  await commitChunks(ops)
+
+  return {
+    users: usersSnap.size,
+    groups: groupsSnap.size,
+    actionRequests: actionsSnap.size,
+    billingRequests: billingSnap.size,
+  }
 }
