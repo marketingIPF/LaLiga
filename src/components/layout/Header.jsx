@@ -1,6 +1,7 @@
 import { Sun, Moon, LogOut } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
+import NotificationBell from '../ui/NotificationBell'
 
 export default function Header({ title, subtitle, showLogout = false }) {
   const { theme, toggle } = useTheme()
@@ -17,6 +18,7 @@ export default function Header({ title, subtitle, showLogout = false }) {
         <h1 className="text-2xl font-black tracking-tight">{title}</h1>
       </div>
       <div className="flex items-center gap-2">
+        <NotificationBell />
         <button
           onClick={toggle}
           className="w-10 h-10 rounded-full glass flex items-center justify-center"
