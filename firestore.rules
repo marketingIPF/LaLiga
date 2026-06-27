@@ -112,5 +112,27 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    // -------- NOTIFICATIONS --------
+    // Cada notificación tiene un userId destinatario. Solo el destinatario
+    // puede leerla. Cualquiera autenticado puede crearlas (necesario para
+    // que un agente notifique a admins y viceversa). Solo el destinatario
+    // puede marcarla como leída.
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && resource.data.userId == myUid();
+      allow create: if isSignedIn()
+        && request.resource.data.userId is string
+        && request.resource.data.type is string
+        && request.resource.data.title is string
+        && request.resource.data.read == false;
+      allow update: if isSignedIn()
+        && resource.data.userId == myUid()
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.message == resource.data.message;
+      allow delete: if isAdmin()
+        || (isSignedIn() && resource.data.userId == myUid());
+    }
   }
 }
