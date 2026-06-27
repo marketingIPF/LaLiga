@@ -14,14 +14,24 @@
     height: 100%;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     @apply font-sans bg-rk-cream text-rk-ink dark:bg-rk-ink dark:text-rk-cream;
     overscroll-behavior-y: none;
+    background-image:
+      radial-gradient(at 100% 0%, rgba(207, 115, 27, 0.10) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(207, 115, 27, 0.06) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 
-  /* iOS-style scrollbar */
+  .dark body {
+    background-image:
+      radial-gradient(at 100% 0%, rgba(207, 115, 27, 0.14) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(207, 115, 27, 0.08) 0px, transparent 50%);
+  }
+
   ::-webkit-scrollbar {
     width: 0;
     background: transparent;
@@ -42,31 +52,174 @@
 }
 
 @layer components {
-  /* Glassmorphism reutilizable */
+  /*
+   * Liquid Glass — el material base de iOS 26.
+   * Capa de fondo translúcida + saturación + brillo especular en el borde superior
+   * (via ::before) que simula refracción de luz.
+   */
   .glass {
-    @apply bg-white/70 dark:bg-rk-ink-card/60 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-glass dark:shadow-glass-dark;
+    position: relative;
+    isolation: isolate;
+    background-color: rgba(255, 255, 255, 0.62);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.5) inset,
+      0 8px 32px 0 rgba(0, 0, 0, 0.08),
+      0 2px 8px 0 rgba(0, 0, 0, 0.04);
   }
 
+  .dark .glass {
+    background-color: rgba(31, 31, 31, 0.55);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.08) inset,
+      0 8px 32px 0 rgba(0, 0, 0, 0.5),
+      0 2px 8px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Especular en el borde superior (refracción de luz) */
+  .glass::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.12) 25%,
+      rgba(255, 255, 255, 0) 50%
+    );
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.7;
+  }
+
+  .dark .glass::before {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.10) 0%,
+      rgba(255, 255, 255, 0.02) 30%,
+      rgba(255, 255, 255, 0) 60%
+    );
+  }
+
+  /* Aseguramos que los hijos directos quedan por encima del especular */
+  .glass > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Variante más densa para nav y modales */
   .glass-strong {
-    @apply bg-white/85 dark:bg-rk-ink-card/85 backdrop-blur-2xl border border-white/50 dark:border-white/10;
+    position: relative;
+    isolation: isolate;
+    background-color: rgba(255, 255, 255, 0.80);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.6) inset,
+      0 12px 40px 0 rgba(0, 0, 0, 0.10),
+      0 4px 12px 0 rgba(0, 0, 0, 0.05);
   }
 
-  /* Tarjeta iOS 26 */
+  .dark .glass-strong {
+    background-color: rgba(31, 31, 31, 0.78);
+    border-color: rgba(255, 255, 255, 0.10);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.10) inset,
+      0 12px 40px 0 rgba(0, 0, 0, 0.55),
+      0 4px 12px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  .glass-strong::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.65) 0%,
+      rgba(255, 255, 255, 0.15) 25%,
+      rgba(255, 255, 255, 0) 50%
+    );
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.8;
+  }
+
+  .dark .glass-strong::before {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.03) 30%,
+      rgba(255, 255, 255, 0) 60%
+    );
+  }
+
+  .glass-strong > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Tarjeta iOS 26 con esquinas más redondeadas */
   .ios-card {
-    @apply glass rounded-3xl p-5;
+    @apply glass rounded-[28px] p-5;
   }
 
-  /* Botón primario naranja RK */
+  /*
+   * Botón primario naranja — gradiente + glow + highlight superior.
+   * El ::before añade el brillo especular sobre el gradiente.
+   */
   .btn-primary {
-    @apply bg-rk-orange text-white font-semibold rounded-2xl px-5 py-3
-           active:scale-[0.97] transition-transform shadow-md shadow-rk-orange/20
-           disabled:opacity-50 disabled:active:scale-100;
+    position: relative;
+    isolation: isolate;
+    @apply rounded-2xl px-5 py-3.5 font-bold text-white;
+    background: linear-gradient(180deg, #d8821f 0%, #cf731b 50%, #b9650f 100%);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.3) inset,
+      0 10px 28px -6px rgba(207, 115, 27, 0.45),
+      0 4px 12px -2px rgba(207, 115, 27, 0.3);
+    transition: transform 0.18s cubic-bezier(0.16, 1.4, 0.5, 1),
+                box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.28) 0%,
+      rgba(255, 255, 255, 0.02) 45%,
+      rgba(255, 255, 255, 0) 60%
+    );
+    pointer-events: none;
+  }
+
+  .btn-primary:active {
+    transform: scale(0.96);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.2) inset,
+      0 4px 12px -2px rgba(207, 115, 27, 0.35);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    transform: none;
+  }
+
+  /* Botón secundario con cristal */
   .btn-secondary {
-    @apply glass rounded-2xl px-5 py-3 font-semibold
-           active:scale-[0.97] transition-transform
-           text-rk-ink dark:text-rk-cream;
+    @apply glass rounded-2xl px-5 py-3.5 font-bold text-rk-ink dark:text-rk-cream;
+    transition: transform 0.18s cubic-bezier(0.16, 1.4, 0.5, 1);
+  }
+
+  .btn-secondary:active {
+    transform: scale(0.96);
   }
 
   /* Píldora */
@@ -83,11 +236,7 @@
   }
 }
 
-/* Transición global iOS-style */
+/* Tap targets sin highlight de Safari */
 * {
   -webkit-touch-callout: none;
-}
-
-button:active {
-  transition: transform 0.1s ease;
 }
