@@ -22,4 +22,5 @@ export const COL = {
   actionRequests: 'actionRequests',
   billingRequests: 'billingRequests',
   achievements: 'achievements',
+  notifications: 'notifications',
 }

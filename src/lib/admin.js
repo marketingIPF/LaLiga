@@ -33,7 +33,7 @@ export async function resetPeriod() {
     ops.push({
       type: 'update',
       ref: doc(db, COL.users, u.id),
-      data: { points: 0, periodBilling: 0 },
+      data: { points: 0, periodBilling: 0, inTop3: false },
     })
   }
   for (const g of groupsSnap.docs) {
@@ -55,11 +55,12 @@ export async function resetPeriod() {
  * No toca usuarios, equipos ni roles.
  */
 export async function resetAll() {
-  const [usersSnap, groupsSnap, actionsSnap, billingSnap] = await Promise.all([
+  const [usersSnap, groupsSnap, actionsSnap, billingSnap, notifsSnap] = await Promise.all([
     getDocs(collection(db, COL.users)),
     getDocs(collection(db, COL.groups)),
     getDocs(collection(db, COL.actionRequests)),
     getDocs(collection(db, COL.billingRequests)),
+    getDocs(collection(db, COL.notifications)),
   ])
 
   const ops = []
@@ -73,6 +74,7 @@ export async function resetAll() {
         periodBilling: 0,
         totalBilling: 0,
         lastActionAt: null,
+        inTop3: false,
       },
     })
   }
@@ -89,6 +91,9 @@ export async function resetAll() {
   for (const b of billingSnap.docs) {
     ops.push({ type: 'delete', ref: doc(db, COL.billingRequests, b.id) })
   }
+  for (const n of notifsSnap.docs) {
+    ops.push({ type: 'delete', ref: doc(db, COL.notifications, n.id) })
+  }
   await commitChunks(ops)
 
   return {
@@ -96,5 +101,6 @@ export async function resetAll() {
     groups: groupsSnap.size,
     actionRequests: actionsSnap.size,
     billingRequests: billingSnap.size,
+    notifications: notifsSnap.size,
   }
 }
