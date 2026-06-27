@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, TrendingUp, Users, Clock, Euro, RotateCcw, AlertTriangle } from 'lucide-react'
+import { ChevronRight, TrendingUp, Users, Clock, Euro, RotateCcw, AlertTriangle, UserCog } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useActionRequests } from '../hooks/useActionRequests'
@@ -9,7 +9,7 @@ import { useGroups } from '../hooks/useGroups'
 import { isAdminRole } from '../data/seedUsers'
 import { formatPoints, relativeDate } from '../lib/utils'
 import { ACTION_TYPES } from '../lib/constants'
-import { resetPeriod } from '../lib/admin'
+import { resetPeriod, resetAll } from '../lib/admin'
 import Header from '../components/layout/Header'
 import GlassCard from '../components/ui/GlassCard'
 import Avatar from '../components/ui/Avatar'
@@ -100,6 +100,22 @@ export default function AdminHome() {
         </div>
       </Link>
 
+      {/* CTA agentes */}
+      <Link to="/agentes" className="block">
+        <div className="glass rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
+            <UserCog size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm">Gestionar agentes</div>
+            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
+              {users.length} {users.length === 1 ? 'persona' : 'personas'} · añadir o eliminar
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
+        </div>
+      </Link>
+
       {/* Métricas agencia */}
       <div className="grid grid-cols-2 gap-3">
         <MetricCard
@@ -169,7 +185,13 @@ export default function AdminHome() {
         </button>
       </section>
 
-      {showReset && <ResetModal onClose={() => setShowReset(false)} stats={{ agents: agents.length, points: totalPoints, billing: totalBilling }} />}
+      {showReset && <ResetModal onClose={() => setShowReset(false)} stats={{
+        agents: agents.length,
+        points: totalPoints,
+        billing: totalBilling,
+        lifetimePoints: totalLifetime,
+        actionRequests: pending.length, // solo pendientes visible, pero el reset borra todas
+      }} />}
     </div>
   )
 }
@@ -189,24 +211,34 @@ function MetricCard({ icon, label, value }) {
 }
 
 function ResetModal({ onClose, stats }) {
+  const [mode, setMode] = useState('periodo') // 'periodo' | 'todo'
   const [confirmText, setConfirmText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [done, setDone] = useState(null)
 
-  const canConfirm = confirmText.trim().toUpperCase() === 'RESET'
+  const isFull = mode === 'todo'
+  const requiredWord = isFull ? 'BORRAR TODO' : 'RESET'
+  const canConfirm = confirmText.trim().toUpperCase() === requiredWord
+
+  // Al cambiar de modo, vaciamos el input para forzar re-escritura
+  function changeMode(newMode) {
+    setMode(newMode)
+    setConfirmText('')
+    setError(null)
+  }
 
   async function handleReset() {
     if (!canConfirm) return
     setError(null)
     setLoading(true)
     try {
-      const result = await resetPeriod()
-      setDone(result)
-      setTimeout(() => onClose(), 1800)
+      const result = isFull ? await resetAll() : await resetPeriod()
+      setDone({ mode, ...result })
+      setTimeout(() => onClose(), 2000)
     } catch (e) {
       console.error(e)
-      setError('No se pudo resetear el periodo. Inténtalo de nuevo.')
+      setError('No se pudo completar el reset. Inténtalo de nuevo.')
       setLoading(false)
     }
   }
@@ -218,45 +250,91 @@ function ResetModal({ onClose, stats }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-white dark:bg-rk-ink-card rounded-3xl p-6 shadow-2xl animate-slide-up"
+        className="w-full max-w-md bg-white dark:bg-rk-ink-card rounded-[28px] p-6 shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto"
       >
         {done ? (
           <div className="text-center py-2">
             <div className="w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-3">
               <RotateCcw size={28} />
             </div>
-            <h2 className="text-xl font-black mb-1">Periodo reiniciado</h2>
+            <h2 className="text-xl font-black mb-1">
+              {done.mode === 'todo' ? 'Sistema a cero' : 'Periodo reiniciado'}
+            </h2>
             <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60">
-              {done.users} usuarios y {done.groups} equipos a cero
+              {done.mode === 'todo'
+                ? `${done.users} usuarios · ${done.groups} equipos · ${done.actionRequests + done.billingRequests} solicitudes borradas`
+                : `${done.users} usuarios y ${done.groups} equipos a cero`}
             </p>
           </div>
         ) : (
           <>
-            <div className="w-14 h-14 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-3">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 ${
+              isFull ? 'bg-red-500/15 text-red-500' : 'bg-amber-500/10 text-amber-500'
+            }`}>
               <AlertTriangle size={26} />
             </div>
-            <h2 className="text-xl font-black text-center mb-1">¿Iniciar nuevo periodo?</h2>
+            <h2 className="text-xl font-black text-center mb-1">
+              {isFull ? 'Borrar todo el sistema' : '¿Iniciar nuevo periodo?'}
+            </h2>
             <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60 text-center mb-4">
-              Esto pondrá a CERO los puntos y la facturación del periodo de los {stats.agents} agentes y todos los equipos.
+              {isFull
+                ? 'Modo testing: deja la base de datos como recién instalada.'
+                : `Pondrá a cero puntos y facturación del periodo de los ${stats.agents} agentes y todos los equipos.`}
             </p>
 
-            <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-3 mb-4 space-y-1.5 text-sm">
+            {/* Toggle de modo */}
+            <div className="flex gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-2xl mb-4">
+              <ModeTab
+                active={mode === 'periodo'}
+                onClick={() => changeMode('periodo')}
+                label="Solo periodo"
+              />
+              <ModeTab
+                active={mode === 'todo'}
+                onClick={() => changeMode('todo')}
+                label="Todo (testing)"
+                danger
+              />
+            </div>
+
+            {/* Resumen de qué se hace */}
+            <div className={`rounded-2xl p-3 mb-4 space-y-1.5 text-sm ${
+              isFull ? 'bg-red-500/5 border border-red-500/20' : 'bg-black/5 dark:bg-white/5'
+            }`}>
               <Row label="Puntos del periodo" value={`${formatPoints(stats.points)} → 0`} />
               <Row label="Facturación del periodo" value={`${formatEur(stats.billing)} → 0 €`} />
-              <Row label="Histórico (lifetime)" value="se conserva" muted />
-              <Row label="Facturación histórica" value="se conserva" muted />
-              <Row label="Solicitudes / facturas" value="se conservan" muted />
+              {isFull ? (
+                <>
+                  <Row
+                    label="Puntos históricos (lifetime)"
+                    value={`${formatPoints(stats.lifetimePoints)} → 0`}
+                    danger
+                  />
+                  <Row label="Facturación histórica" value="→ 0 €" danger />
+                  <Row label="Todas las acciones" value="se borran" danger />
+                  <Row label="Todas las facturaciones" value="se borran" danger />
+                </>
+              ) : (
+                <>
+                  <Row label="Histórico (lifetime)" value="se conserva" muted />
+                  <Row label="Facturación histórica" value="se conserva" muted />
+                  <Row label="Solicitudes / facturas" value="se conservan" muted />
+                </>
+              )}
+              <Row label="Usuarios y equipos" value="se conservan" muted />
             </div>
 
             <label className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 block mb-1.5">
-              Escribe "RESET" para confirmar
+              Escribe "{requiredWord}" para confirmar
             </label>
             <input
               type="text"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="RESET"
-              className="w-full bg-black/5 dark:bg-white/5 rounded-2xl px-4 py-3 font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
+              placeholder={requiredWord}
+              className={`w-full bg-black/5 dark:bg-white/5 rounded-2xl px-4 py-3 font-bold uppercase tracking-wider focus:outline-none focus:ring-2 mb-4 ${
+                isFull ? 'focus:ring-red-500' : 'focus:ring-amber-500'
+              }`}
               autoFocus
             />
 
@@ -277,9 +355,11 @@ function ResetModal({ onClose, stats }) {
               <button
                 onClick={handleReset}
                 disabled={!canConfirm || loading}
-                className="rounded-2xl bg-red-500 text-white font-bold py-3 active:scale-[0.98] transition-transform disabled:opacity-30 disabled:cursor-not-allowed"
+                className={`rounded-2xl text-white font-bold py-3 active:scale-[0.98] transition-transform disabled:opacity-30 disabled:cursor-not-allowed ${
+                  isFull ? 'bg-red-500' : 'bg-amber-500'
+                }`}
               >
-                {loading ? 'Reiniciando…' : 'Reiniciar'}
+                {loading ? 'Procesando…' : isFull ? 'Borrar todo' : 'Reiniciar'}
               </button>
             </div>
           </>
@@ -289,13 +369,42 @@ function ResetModal({ onClose, stats }) {
   )
 }
 
-function Row({ label, value, muted }) {
+function ModeTab({ active, onClick, label, danger }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
+        active
+          ? danger
+            ? 'bg-red-500 text-white'
+            : 'bg-rk-ink text-rk-cream dark:bg-rk-cream dark:text-rk-ink'
+          : 'text-rk-ink/60 dark:text-rk-cream/60'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
+function Row({ label, value, muted, danger }) {
   return (
     <div className="flex items-center justify-between text-xs">
-      <span className={muted ? 'text-rk-ink/40 dark:text-rk-cream/40' : 'text-rk-ink/60 dark:text-rk-cream/60'}>
+      <span className={
+        danger
+          ? 'text-red-500'
+          : muted
+            ? 'text-rk-ink/40 dark:text-rk-cream/40'
+            : 'text-rk-ink/60 dark:text-rk-cream/60'
+      }>
         {label}
       </span>
-      <span className={`font-bold ${muted ? 'text-rk-ink/50 dark:text-rk-cream/50' : ''}`}>
+      <span className={`font-bold ${
+        danger
+          ? 'text-red-500'
+          : muted
+            ? 'text-rk-ink/50 dark:text-rk-cream/50'
+            : ''
+      }`}>
         {value}
       </span>
     </div>
