@@ -94,10 +94,16 @@ service cloud.firestore {
         && request.resource.data.amount > 0
         && request.resource.data.amount <= 1000000;
       allow update: if isAdmin()
-        && resource.data.status == 'pending'
-        && request.resource.data.status in ['approved', 'rejected']
         && request.resource.data.userId == resource.data.userId
-        && request.resource.data.amount == resource.data.amount;
+        && request.resource.data.amount == resource.data.amount
+        && (
+          // Aprobar / rechazar una pendiente
+          (resource.data.status == 'pending'
+            && request.resource.data.status in ['approved', 'rejected'])
+          // Editar el multiplicador de una ya aprobada
+          || (resource.data.status == 'approved'
+            && request.resource.data.status == 'approved')
+        );
       allow delete: if isAdmin();
     }
 
