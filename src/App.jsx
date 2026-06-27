@@ -14,6 +14,7 @@ import AprobarFacturacion from './views/AprobarFacturacion'
 import Perfil from './views/Perfil'
 import CambiarPassword from './views/CambiarPassword'
 import GestionEquipos from './views/GestionEquipos'
+import GestionAgentes from './views/GestionAgentes'
 
 export default function App() {
   const { firebaseUser, profile, isAdmin, loading } = useAuth()
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/cambiar-password" element={<CambiarPassword />} />
         {isAdmin && <Route path="/aprobaciones" element={<Aprobaciones />} />}
         {isAdmin && <Route path="/equipos" element={<GestionEquipos />} />}
+        {isAdmin && <Route path="/agentes" element={<GestionAgentes />} />}
         {isAdmin && <Route path="/facturacion-aprobar" element={<AprobarFacturacion />} />}
         {!isAdmin && <Route path="/registrar" element={<RegistrarAccion />} />}
         {!isAdmin && <Route path="/facturacion" element={<RegistrarFacturacion />} />}
