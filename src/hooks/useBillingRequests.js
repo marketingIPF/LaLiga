@@ -6,15 +6,21 @@ import {
   onSnapshot,
   query,
   where,
-  orderBy,
   doc,
   runTransaction,
   increment,
 } from 'firebase/firestore'
 import { db, COL } from '../lib/firebase'
 
+function tsMs(value) {
+  if (!value) return 0
+  if (typeof value.toMillis === 'function') return value.toMillis()
+  return new Date(value).getTime()
+}
+
 /**
  * Listado en tiempo real de facturaciones (filtrable por estado y/o agente).
+ * Ordenamos en cliente para evitar índices compuestos en Firestore.
  */
 export function useBillingRequests({ userId = null, status = null } = {}) {
   const [requests, setRequests] = useState([])
@@ -24,13 +30,17 @@ export function useBillingRequests({ userId = null, status = null } = {}) {
     const constraints = []
     if (userId) constraints.push(where('userId', '==', userId))
     if (status) constraints.push(where('status', '==', status))
-    constraints.push(orderBy('createdAt', 'desc'))
 
-    const q = query(collection(db, COL.billingRequests), ...constraints)
+    const q = constraints.length
+      ? query(collection(db, COL.billingRequests), ...constraints)
+      : collection(db, COL.billingRequests)
+
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        docs.sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt))
+        setRequests(docs)
         setLoading(false)
       },
       (err) => {
@@ -72,7 +82,6 @@ export async function submitBillingRequest({ user, amount, notes = '' }) {
 
 /**
  * Aprobar una facturación con un multiplicador (ruleta: 0.5, 1, 2).
- * Suma finalAmount al agente (periodBilling + totalBilling) y al grupo.
  */
 export async function approveBillingRequest({ requestId, adminUid, multiplier }) {
   if (![0.5, 1, 2].includes(multiplier)) {

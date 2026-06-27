@@ -6,7 +6,6 @@ import {
   onSnapshot,
   query,
   where,
-  orderBy,
   doc,
   runTransaction,
   increment,
@@ -15,7 +14,19 @@ import { db, COL } from '../lib/firebase'
 import { ACTION_TYPES } from '../lib/constants'
 
 /**
+ * Convierte un Firestore Timestamp (o un string/null) a milisegundos
+ * para poder comparar. Devuelve 0 si no hay timestamp todavía
+ * (los pending acabados de crear pueden tener createdAt=null durante 1 tick).
+ */
+function tsMs(value) {
+  if (!value) return 0
+  if (typeof value.toMillis === 'function') return value.toMillis()
+  return new Date(value).getTime()
+}
+
+/**
  * Listado en tiempo real de solicitudes (filtrable por estado y/o agente).
+ * Ordenamos en cliente para evitar índices compuestos en Firestore.
  */
 export function useActionRequests({ userId = null, status = null } = {}) {
   const [requests, setRequests] = useState([])
@@ -25,13 +36,17 @@ export function useActionRequests({ userId = null, status = null } = {}) {
     const constraints = []
     if (userId) constraints.push(where('userId', '==', userId))
     if (status) constraints.push(where('status', '==', status))
-    constraints.push(orderBy('createdAt', 'desc'))
 
-    const q = query(collection(db, COL.actionRequests), ...constraints)
+    const q = constraints.length
+      ? query(collection(db, COL.actionRequests), ...constraints)
+      : collection(db, COL.actionRequests)
+
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        docs.sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt))
+        setRequests(docs)
         setLoading(false)
       },
       (err) => {
@@ -86,14 +101,12 @@ export async function approveRequest({ requestId, adminUid }) {
     const userSnap = await tx.get(userRef)
     if (!userSnap.exists()) throw new Error('Agente no encontrado')
 
-    // Sumar puntos al agente
     tx.update(userRef, {
       points: increment(req.points),
       lifetimePoints: increment(req.points),
       lastActionAt: serverTimestamp(),
     })
 
-    // Sumar puntos al grupo si existe
     if (req.groupId) {
       const groupRef = doc(db, COL.groups, req.groupId)
       tx.update(groupRef, {
@@ -101,7 +114,6 @@ export async function approveRequest({ requestId, adminUid }) {
       })
     }
 
-    // Cerrar la solicitud
     tx.update(reqRef, {
       status: 'approved',
       reviewedAt: serverTimestamp(),
