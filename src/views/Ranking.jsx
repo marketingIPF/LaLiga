@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Trophy, Users, User } from 'lucide-react'
+import { Trophy, Users, User, Euro } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
@@ -11,14 +11,23 @@ import Avatar from '../components/ui/Avatar'
 import RankBadge from '../components/ui/RankBadge'
 import { computeRank } from '../lib/constants'
 
+const formatEur = (n) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n ?? 0)
+
+const TABS = [
+  { id: 'individual', label: 'Individual', Icon: User },
+  { id: 'facturacion', label: 'Facturación', Icon: Euro },
+  { id: 'equipos', label: 'Equipos', Icon: Users },
+]
+
 export default function Ranking() {
-  const [mode, setMode] = useState('individual') // 'individual' | 'grupos'
+  const [tab, setTab] = useState('individual')
   const { profile } = useAuth()
   const { users, topLifetime } = useUsers()
   const { groups } = useGroups()
 
-  // Solo agentes en el ranking individual
-  const agents = useMemo(
+  // Agentes ordenados por puntos
+  const agentsByPoints = useMemo(
     () =>
       users
         .filter((u) => !isAdminRole(u.role))
@@ -26,31 +35,55 @@ export default function Ranking() {
     [users]
   )
 
+  // Agentes ordenados por facturación
+  const agentsByBilling = useMemo(
+    () =>
+      users
+        .filter((u) => !isAdminRole(u.role))
+        .sort((a, b) => (b.periodBilling ?? 0) - (a.periodBilling ?? 0)),
+    [users]
+  )
+
+  // Equipos ordenados por puntos
+  const groupsByPoints = useMemo(
+    () => [...groups].sort((a, b) => (b.totalPoints ?? 0) - (a.totalPoints ?? 0)),
+    [groups]
+  )
+
   return (
     <div className="space-y-5 animate-fade-in">
       <Header title="El Boletín" subtitle="Ranking" />
 
-      {/* Toggle */}
+      {/* Tabs */}
       <div className="glass rounded-2xl p-1 flex gap-1">
-        <ToggleTab
-          active={mode === 'individual'}
-          onClick={() => setMode('individual')}
-          Icon={User}
-          label="Individual"
-        />
-        <ToggleTab
-          active={mode === 'grupos'}
-          onClick={() => setMode('grupos')}
-          Icon={Users}
-          label="Equipos"
-        />
+        {TABS.map((t) => (
+          <ToggleTab
+            key={t.id}
+            active={tab === t.id}
+            onClick={() => setTab(t.id)}
+            Icon={t.Icon}
+            label={t.label}
+          />
+        ))}
       </div>
 
-      {mode === 'individual' ? (
-        <IndividualLeaderboard agents={agents} topLifetime={topLifetime} myId={profile?.id} />
-      ) : (
-        <GroupsLeaderboard groups={groups} />
+      {tab === 'individual' && (
+        <IndividualLeaderboard
+          agents={agentsByPoints}
+          topLifetime={topLifetime}
+          myId={profile?.id}
+          metric="points"
+        />
       )}
+      {tab === 'facturacion' && (
+        <IndividualLeaderboard
+          agents={agentsByBilling}
+          topLifetime={topLifetime}
+          myId={profile?.id}
+          metric="billing"
+        />
+      )}
+      {tab === 'equipos' && <GroupsLeaderboard groups={groupsByPoints} />}
     </div>
   )
 }
@@ -60,19 +93,21 @@ function ToggleTab({ active, onClick, Icon, label }) {
     <button
       onClick={onClick}
       className={cn(
-        'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all',
+        'flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all',
         active
           ? 'bg-rk-orange text-white shadow-md shadow-rk-orange/20'
           : 'text-rk-ink/60 dark:text-rk-cream/60'
       )}
     >
-      <Icon size={16} />
+      <Icon size={14} />
       {label}
     </button>
   )
 }
 
-function IndividualLeaderboard({ agents, topLifetime, myId }) {
+// metric: 'points' → ordena/destaca puntos, muestra facturación al lado.
+// metric: 'billing' → ordena/destaca facturación, muestra puntos al lado.
+function IndividualLeaderboard({ agents, topLifetime, myId, metric }) {
   if (agents.length === 0) return <EmptyState text="Aún no hay datos para mostrar" />
 
   const [first, second, third, ...rest] = agents
@@ -81,9 +116,9 @@ function IndividualLeaderboard({ agents, topLifetime, myId }) {
     <>
       {/* Podio */}
       <div className="grid grid-cols-3 gap-2 items-end pt-4">
-        <PodiumSlot position={2} user={second} topLifetime={topLifetime} myId={myId} height="h-28" />
-        <PodiumSlot position={1} user={first} topLifetime={topLifetime} myId={myId} height="h-36" featured />
-        <PodiumSlot position={3} user={third} topLifetime={topLifetime} myId={myId} height="h-24" />
+        <PodiumSlot position={2} user={second} myId={myId} metric={metric} height="h-28" />
+        <PodiumSlot position={1} user={first} myId={myId} metric={metric} height="h-36" featured />
+        <PodiumSlot position={3} user={third} myId={myId} metric={metric} height="h-24" />
       </div>
 
       {/* Resto del ranking */}
@@ -95,6 +130,7 @@ function IndividualLeaderboard({ agents, topLifetime, myId }) {
             user={u}
             topLifetime={topLifetime}
             isMe={u.id === myId}
+            metric={metric}
           />
         ))}
       </div>
@@ -102,15 +138,24 @@ function IndividualLeaderboard({ agents, topLifetime, myId }) {
   )
 }
 
-function PodiumSlot({ position, user, topLifetime, myId, height, featured }) {
+function getPrimary(user, metric) {
+  const value = metric === 'points' ? user.points ?? 0 : user.periodBilling ?? 0
+  return metric === 'points' ? formatPoints(value) : formatEur(value)
+}
+
+function getSecondary(user, metric) {
+  // El opuesto, pequeño, debajo
+  if (metric === 'points') {
+    return `${formatEur(user.periodBilling ?? 0)} fact.`
+  }
+  return `${formatPoints(user.points ?? 0)} pts`
+}
+
+function PodiumSlot({ position, user, myId, metric, height, featured }) {
   if (!user) return <div />
-  const rank = computeRank({
-    points: user.points ?? 0,
-    lifetimePoints: user.lifetimePoints ?? 0,
-    topLifetimeInAgency: topLifetime,
-  })
   const medals = { 1: '🥇', 2: '🥈', 3: '🥉' }
   const isMe = user.id === myId
+  const primary = getPrimary(user, metric)
 
   return (
     <div className="flex flex-col items-center">
@@ -125,7 +170,7 @@ function PodiumSlot({ position, user, topLifetime, myId, height, featured }) {
         >
           {user.name.split(' ')[0]}
         </div>
-        <div className="text-xs font-black mt-0.5">{formatPoints(user.points)}</div>
+        <div className="text-xs font-black mt-0.5">{primary}</div>
       </div>
       <div
         className={cn(
@@ -142,7 +187,7 @@ function PodiumSlot({ position, user, topLifetime, myId, height, featured }) {
   )
 }
 
-function RankRow({ position, user, topLifetime, isMe }) {
+function RankRow({ position, user, topLifetime, isMe, metric }) {
   const rank = computeRank({
     points: user.points ?? 0,
     lifetimePoints: user.lifetimePoints ?? 0,
@@ -167,8 +212,13 @@ function RankRow({ position, user, topLifetime, isMe }) {
         </div>
         <RankBadge rankId={rank.id} size="sm" className="mt-1" />
       </div>
-      <div className="text-sm font-black text-rk-orange whitespace-nowrap">
-        {formatPoints(user.points)}
+      <div className="text-right whitespace-nowrap">
+        <div className="text-sm font-black text-rk-orange">
+          {getPrimary(user, metric)}
+        </div>
+        <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+          {getSecondary(user, metric)}
+        </div>
       </div>
     </div>
   )
@@ -193,10 +243,10 @@ function GroupsLeaderboard({ groups }) {
               {g.memberCount ?? 0} {g.memberCount === 1 ? 'agente' : 'agentes'}
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right whitespace-nowrap">
             <div className="text-lg font-black text-rk-orange">{formatPoints(g.totalPoints)}</div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
-              pts
+            <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+              {formatEur(g.totalBilling ?? 0)} fact.
             </div>
           </div>
         </GlassCard>
