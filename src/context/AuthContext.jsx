@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
           setProfile({ id: snap.id, ...snap.data() })
           setAuthError(null)
         } else {
-          setAuthError('Tu usuario no está dado de alta en La Liga. Habla con un codirector.')
+          setAuthError('Tu usuario no está dado de alta en La Liga. Habla con un admin.')
           setProfile(null)
         }
         setLoading(false)
