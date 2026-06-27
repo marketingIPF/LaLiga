@@ -3,20 +3,6 @@ rules_version = '2';
 // ============================================================
 // La Liga · Reglas de seguridad Firestore
 // ============================================================
-// Modelo de identidad:
-//   - El UID de Firebase Auth coincide con el ID del documento en /users.
-//     Esto lo garantiza el script de seed (createUser con uid = id del agente).
-//
-// Colecciones:
-//   users/{userId}        — perfil del agente (puntos, rango, grupo)
-//   groups/{groupId}      — equipos de captación
-//   actionRequests/{id}   — solicitudes pendientes / aprobadas / rechazadas
-//   achievements/{id}     — logros otorgados
-//
-// Roles:
-//   "Codirector"        → admin (aprueba, rechaza, edita puntos)
-//   "Agente Comercial"  → agente (solo crea solicitudes propias)
-// ============================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -44,10 +30,12 @@ service cloud.firestore {
         && myProfile().role == 'Codirector';
     }
 
-    // Comprueba que los campos sensibles NO cambian
-    function pointsUnchanged() {
+    // El propio agente nunca puede modificar campos económicos
+    function economicFieldsUnchanged() {
       return request.resource.data.points == resource.data.points
-        && request.resource.data.lifetimePoints == resource.data.lifetimePoints;
+        && request.resource.data.lifetimePoints == resource.data.lifetimePoints
+        && request.resource.data.get('periodBilling', 0) == resource.data.get('periodBilling', 0)
+        && request.resource.data.get('totalBilling', 0) == resource.data.get('totalBilling', 0);
     }
 
     function roleAndGroupUnchanged() {
@@ -58,21 +46,13 @@ service cloud.firestore {
 
     // -------- USERS --------
     match /users/{userId} {
-      // Lectura: cualquier usuario autenticado (necesario para el ranking)
       allow read: if isSignedIn();
-
-      // Creación / borrado: solo admin (se hace vía seed o panel)
       allow create, delete: if isAdmin();
-
-      // Actualización:
-      //  - Admin puede tocar cualquier campo.
-      //  - El propio agente puede editar campos cosméticos pero NUNCA
-      //    points, lifetimePoints, role, email ni groupId.
       allow update: if isAdmin()
         || (
           isSignedIn()
           && myUid() == userId
-          && pointsUnchanged()
+          && economicFieldsUnchanged()
           && roleAndGroupUnchanged()
         );
     }
@@ -86,12 +66,6 @@ service cloud.firestore {
     // -------- ACTION REQUESTS --------
     match /actionRequests/{reqId} {
       allow read: if isSignedIn();
-
-      // Crear: el agente solo puede crear solicitudes suyas y en estado 'pending'.
-      //  - userId del payload debe ser su propio UID
-      //  - status === 'pending'
-      //  - sin revisor asignado
-      //  - puntos dentro del rango del catálogo (0 < pts <= 200)
       allow create: if isSignedIn()
         && profileExists()
         && request.resource.data.userId == myUid()
@@ -100,17 +74,30 @@ service cloud.firestore {
         && request.resource.data.points is int
         && request.resource.data.points > 0
         && request.resource.data.points <= 200;
-
-      // Actualizar: solo admin puede aprobar / rechazar.
-      //  - el documento debe estar en estado 'pending'
-      //  - el nuevo estado debe ser 'approved' o 'rejected'
       allow update: if isAdmin()
         && resource.data.status == 'pending'
         && request.resource.data.status in ['approved', 'rejected']
         && request.resource.data.userId == resource.data.userId
         && request.resource.data.points == resource.data.points;
+      allow delete: if isAdmin();
+    }
 
-      // Eliminar: solo admin.
+    // -------- BILLING REQUESTS --------
+    match /billingRequests/{reqId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && profileExists()
+        && request.resource.data.userId == myUid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.reviewedBy == null
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.amount <= 1000000;
+      allow update: if isAdmin()
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.amount == resource.data.amount;
       allow delete: if isAdmin();
     }
 
