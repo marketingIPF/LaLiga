@@ -12,31 +12,63 @@ export default function RegistrarAccion() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
 
-  const [selected, setSelected] = useState(params.get('tipo') || null)
+  const [selectedIds, setSelectedIds] = useState(() => {
+    const tipo = params.get('tipo')
+    return tipo && ACTION_TYPES[tipo] ? new Set([tipo]) : new Set()
+  })
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [sentCount, setSentCount] = useState(0)
   const [error, setError] = useState(null)
 
+  // Si llegan con ?tipo=X, lo añadimos a la selección
   useEffect(() => {
     const t = params.get('tipo')
-    if (t && ACTION_TYPES[t]) setSelected(t)
+    if (t && ACTION_TYPES[t]) {
+      setSelectedIds((prev) => {
+        if (prev.has(t)) return prev
+        const next = new Set(prev)
+        next.add(t)
+        return next
+      })
+    }
   }, [params])
 
+  function toggle(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectedActions = ACTION_LIST.filter((a) => selectedIds.has(a.id))
+  const totalPoints = selectedActions.reduce((acc, a) => acc + a.points, 0)
+  const count = selectedActions.length
+
   const handleSubmit = async () => {
-    if (!selected) {
-      setError('Selecciona el tipo de acción.')
+    if (count === 0) {
+      setError('Selecciona al menos una acción.')
       return
     }
     setSubmitting(true)
     setError(null)
     try {
-      await submitActionRequest({ user: profile, actionType: selected, notes })
+      // Cada acción seleccionada es una solicitud independiente para que
+      // el admin pueda aprobarlas/rechazarlas por separado si quiere.
+      await Promise.all(
+        selectedActions.map((a) =>
+          submitActionRequest({ user: profile, actionType: a.id, notes })
+        )
+      )
+      setSentCount(count)
       setSuccess(true)
-      setTimeout(() => navigate('/'), 1600)
+      setTimeout(() => navigate('/'), 1800)
     } catch (e) {
       console.error(e)
-      setError('No se pudo enviar tu solicitud. Inténtalo de nuevo.')
+      setError('No se pudieron enviar todas las solicitudes. Revisa el panel.')
     } finally {
       setSubmitting(false)
     }
@@ -48,16 +80,18 @@ export default function RegistrarAccion() {
         <div className="w-24 h-24 rounded-full bg-emerald-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30">
           <Check size={48} strokeWidth={3} className="text-white" />
         </div>
-        <h2 className="text-2xl font-black">¡Solicitud enviada!</h2>
+        <h2 className="text-2xl font-black">
+          {sentCount === 1 ? '¡Solicitud enviada!' : `¡${sentCount} solicitudes enviadas!`}
+        </h2>
         <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60 mt-2 px-6">
-          Tus puntos se sumarán cuando un codirector apruebe la acción.
+          Tus puntos se sumarán cuando un admin apruebe las acciones.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-5 animate-fade-in pb-32">
       <header className="flex items-center gap-3 pt-4 pb-2">
         <button
           onClick={() => navigate(-1)}
@@ -75,43 +109,45 @@ export default function RegistrarAccion() {
       </header>
 
       <p className="text-sm text-rk-ink/70 dark:text-rk-cream/70">
-        Selecciona qué has hecho. Un codirector validará la acción y sumará los puntos a tu liga.
+        Marca todas las acciones que apliquen (por ejemplo, captación + exclusiva). Un admin las validará y sumará los puntos.
       </p>
 
       <div className="space-y-2.5">
-        {ACTION_LIST.map((action) => (
-          <button
-            key={action.id}
-            onClick={() => setSelected(action.id)}
-            className={cn(
-              'w-full flex items-center gap-3 p-4 rounded-2xl text-left transition-all active:scale-[0.98]',
-              selected === action.id
-                ? 'bg-rk-orange text-white shadow-lg shadow-rk-orange/30'
-                : 'glass'
-            )}
-          >
-            <div className="text-2xl">{action.icon}</div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold leading-tight">{action.label}</div>
-              <div
-                className={cn(
-                  'text-xs mt-0.5',
-                  selected === action.id ? 'text-white/80' : 'text-rk-ink/60 dark:text-rk-cream/60'
-                )}
-              >
-                {action.description}
-              </div>
-            </div>
-            <div
+        {ACTION_LIST.map((action) => {
+          const isSelected = selectedIds.has(action.id)
+          return (
+            <button
+              key={action.id}
+              onClick={() => toggle(action.id)}
               className={cn(
-                'font-black text-sm whitespace-nowrap',
-                selected === action.id ? 'text-white' : 'text-rk-orange'
+                'w-full flex items-center gap-3 p-4 rounded-2xl text-left transition-all active:scale-[0.98]',
+                isSelected
+                  ? 'bg-rk-orange/10 dark:bg-rk-orange/15 ring-2 ring-rk-orange'
+                  : 'glass'
               )}
             >
-              +{action.points}
-            </div>
-          </button>
-        ))}
+              <div className="text-2xl">{action.icon}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold leading-tight">{action.label}</div>
+                <div className="text-xs mt-0.5 text-rk-ink/60 dark:text-rk-cream/60">
+                  {action.description}
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="font-black text-sm whitespace-nowrap text-rk-orange">
+                  +{action.points}
+                </div>
+                {isSelected ? (
+                  <div className="w-6 h-6 rounded-full bg-rk-orange flex items-center justify-center">
+                    <Check size={14} strokeWidth={3} className="text-white" />
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 rounded-full border-2 border-rk-ink/20 dark:border-rk-cream/20" />
+                )}
+              </div>
+            </button>
+          )
+        })}
       </div>
 
       <GlassCard>
@@ -139,10 +175,16 @@ export default function RegistrarAccion() {
 
       <button
         onClick={handleSubmit}
-        disabled={!selected || submitting}
+        disabled={count === 0 || submitting}
         className="btn-primary w-full py-4 text-base"
       >
-        {submitting ? 'Enviando…' : 'Enviar solicitud'}
+        {submitting
+          ? 'Enviando…'
+          : count === 0
+          ? 'Selecciona una acción'
+          : count === 1
+          ? `Enviar solicitud · +${totalPoints} pts`
+          : `Enviar ${count} solicitudes · +${totalPoints} pts`}
       </button>
     </div>
   )
