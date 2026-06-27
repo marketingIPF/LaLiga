@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Sparkles, ChevronRight, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Sparkles, ChevronRight, Clock, CheckCircle2, XCircle, Euro } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useActionRequests } from '../hooks/useActionRequests'
@@ -10,6 +10,9 @@ import Header from '../components/layout/Header'
 import GlassCard from '../components/ui/GlassCard'
 import RankBadge from '../components/ui/RankBadge'
 import CircularProgress from '../components/ui/CircularProgress'
+
+const formatEur = (n) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n ?? 0)
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -73,6 +76,27 @@ export default function Dashboard() {
           icon={<Clock size={18} className="text-amber-500" />}
         />
       </div>
+
+      {/* Facturación */}
+      <Link to="/facturacion" className="block">
+        <GlassCard className="!p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
+            <Euro size={22} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
+              Facturación del periodo
+            </div>
+            <div className="text-xl font-black mt-0.5">
+              {formatEur(profile?.periodBilling ?? 0)}
+            </div>
+            <div className="text-xs text-rk-orange font-semibold mt-0.5">
+              Registrar nueva →
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
+        </GlassCard>
+      </Link>
 
       {/* Acciones rápidas */}
       <section>
