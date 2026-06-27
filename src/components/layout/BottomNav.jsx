@@ -25,11 +25,11 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-40 pb-[var(--safe-bottom)]"
+      className="fixed bottom-0 inset-x-0 z-40"
       style={{ paddingBottom: 'max(0.5rem, var(--safe-bottom))' }}
     >
       <div className="mx-3 mb-2">
-        <div className="glass-strong rounded-3xl px-2 py-2 shadow-glass dark:shadow-glass-dark">
+        <div className="glass-strong rounded-[32px] px-2 py-2 shadow-glass-lifted dark:shadow-glass-lifted-dark">
           <div className="flex items-center justify-around">
             {items.map(({ to, label, Icon, fab, end }) => (
               <NavLink
@@ -39,7 +39,7 @@ export default function BottomNav() {
                 className={({ isActive }) =>
                   cn(
                     'flex flex-col items-center justify-center gap-0.5 flex-1 py-1.5',
-                    fab && 'relative -mt-6'
+                    fab && 'relative -mt-7'
                   )
                 }
               >
@@ -87,15 +87,25 @@ function FabButton({ Icon, label, active }) {
     <>
       <div
         className={cn(
-          'w-14 h-14 rounded-full flex items-center justify-center',
-          'bg-gradient-to-br from-rk-orange to-rk-orange-dark text-white shadow-lg shadow-rk-orange/30',
-          'ring-4 ring-rk-cream dark:ring-rk-ink',
-          active && 'animate-pulse-orange'
+          'w-16 h-16 rounded-full flex items-center justify-center relative',
+          'bg-gradient-to-br from-rk-orange-light via-rk-orange to-rk-orange-dark text-white',
+          'shadow-orange-glow ring-4 ring-rk-cream/80 dark:ring-rk-ink/80',
+          'transition-transform duration-200 ease-ios-spring',
+          active && 'animate-pulse-orange scale-105'
         )}
+        style={{ isolation: 'isolate' }}
       >
-        <Icon size={28} strokeWidth={2.5} />
+        {/* Highlight especular superior */}
+        <div
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0) 50%)',
+          }}
+        />
+        <Icon size={28} strokeWidth={2.5} className="relative" />
       </div>
-      <span className="text-[10px] font-semibold text-rk-ink/60 dark:text-rk-cream/60 mt-1">
+      <span className="text-[10px] font-bold text-rk-ink/70 dark:text-rk-cream/70 mt-1.5">
         {label}
       </span>
     </>
