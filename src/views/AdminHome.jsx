@@ -35,7 +35,7 @@ export default function AdminHome() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <Header title={`Hola, ${firstName} 👋`} subtitle="Panel Codirector" showLogout />
+      <Header title={`Hola, ${firstName} 👋`} subtitle="Panel Admin" showLogout />
 
       {/* CTA aprobaciones */}
       <Link to="/aprobaciones" className="block">

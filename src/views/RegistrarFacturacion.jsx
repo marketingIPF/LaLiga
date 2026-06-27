@@ -48,7 +48,7 @@ export default function RegistrarFacturacion() {
           </div>
           <h2 className="text-2xl font-black mb-2">Enviado</h2>
           <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60">
-            Esperando revisión y multiplicador
+            Esperando revisión y aprobación
           </p>
         </div>
       </div>
@@ -67,7 +67,7 @@ export default function RegistrarFacturacion() {
       <div>
         <h1 className="text-2xl font-black">Registrar facturación</h1>
         <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60 mt-1">
-          Reporta el importe facturado. Un codirector lo aprobará y aplicará el multiplicador de la ruleta.
+          Reporta el importe que has facturado. Un admin lo revisará y validará.
         </p>
       </div>
 

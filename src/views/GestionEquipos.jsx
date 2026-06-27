@@ -57,7 +57,7 @@ export default function GestionEquipos() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <Header title="Equipos" subtitle="Gestión Codirector" />
+      <Header title="Equipos" subtitle="Gestión Admin" />
 
       <button onClick={() => setShowCreate(true)} className="btn-primary w-full flex items-center justify-center gap-2">
         <Plus size={18} /> Crear equipo

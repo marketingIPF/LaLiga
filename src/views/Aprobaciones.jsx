@@ -18,7 +18,7 @@ export default function Aprobaciones() {
     return (
       <div className="pt-20 text-center">
         <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60">
-          Esta sección solo está disponible para codirectores.
+          Esta sección solo está disponible para administradores.
         </p>
       </div>
     )

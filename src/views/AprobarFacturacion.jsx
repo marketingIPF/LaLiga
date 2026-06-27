@@ -8,14 +8,12 @@ import {
   Euro,
   Check,
   X,
-  Pencil,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
   useBillingRequests,
   approveBillingRequest,
   rejectBillingRequest,
-  updateApprovedBillingMultiplier,
 } from '../hooks/useBillingRequests'
 import { relativeDate } from '../lib/utils'
 import GlassCard from '../components/ui/GlassCard'
@@ -54,7 +52,7 @@ export default function AprobarFacturacion() {
       <div>
         <h1 className="text-2xl font-black">Aprobar facturación</h1>
         <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60 mt-1">
-          Elige el multiplicador de la ruleta (½, ×1, ×2) y aprueba.
+          Aprueba o rechaza el importe que ha reportado cada agente.
         </p>
       </div>
 
@@ -66,7 +64,7 @@ export default function AprobarFacturacion() {
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-2xl font-black">{requests.length}</span>
             <span className="text-sm text-rk-ink/60 dark:text-rk-cream/60">
-              · {formatEur(pendingTotal)} base
+              · {formatEur(pendingTotal)}
             </span>
           </div>
         </GlassCard>
@@ -114,41 +112,19 @@ export default function AprobarFacturacion() {
 
 function BillingCard({ req, adminUid }) {
   const [busy, setBusy] = useState(false)
-  const [picker, setPicker] = useState(null) // null | 'approve' | 'edit'
   const [error, setError] = useState(null)
 
   const status = req.status
   const isPending = status === 'pending'
   const isApproved = status === 'approved'
 
-  async function handleApprove(multiplier) {
+  async function handleApprove() {
     setError(null)
     setBusy(true)
     try {
-      await approveBillingRequest({ requestId: req.id, adminUid, multiplier })
+      await approveBillingRequest({ requestId: req.id, adminUid })
     } catch (e) {
       setError(e.message ?? 'No se pudo aprobar')
-      setBusy(false)
-    }
-  }
-
-  async function handleEdit(newMultiplier) {
-    if (newMultiplier === req.multiplier) {
-      setPicker(null)
-      return
-    }
-    setError(null)
-    setBusy(true)
-    try {
-      await updateApprovedBillingMultiplier({
-        requestId: req.id,
-        adminUid,
-        newMultiplier,
-      })
-      setPicker(null)
-      setBusy(false)
-    } catch (e) {
-      setError(e.message ?? 'No se pudo editar')
       setBusy(false)
     }
   }
@@ -176,9 +152,6 @@ function BillingCard({ req, adminUid }) {
         </div>
         <div className="text-right">
           <div className="text-lg font-black">{formatEur(req.amount)}</div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
-            Base
-          </div>
         </div>
       </div>
 
@@ -188,27 +161,14 @@ function BillingCard({ req, adminUid }) {
         </p>
       )}
 
-      {/* Resultado final (aprobada) — con botón Editar */}
-      {isApproved && picker !== 'edit' && (
+      {/* Resultado final (aprobada) */}
+      {isApproved && (
         <div className="flex items-center justify-between bg-green-500/10 rounded-xl px-3 py-2">
           <div className="text-xs font-semibold text-green-700 dark:text-green-400">
-            Multiplicador ×{req.multiplier} · Final
-            {req.editedAt && (
-              <span className="ml-1.5 opacity-70">(editado)</span>
-            )}
+            Aprobada
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-base font-black text-green-700 dark:text-green-400">
-              {formatEur(req.finalAmount)}
-            </div>
-            <button
-              onClick={() => setPicker('edit')}
-              disabled={busy}
-              className="p-1.5 rounded-lg bg-green-700/10 hover:bg-green-700/20 text-green-700 dark:text-green-400 transition disabled:opacity-50"
-              aria-label="Editar multiplicador"
-            >
-              <Pencil size={13} />
-            </button>
+          <div className="text-base font-black text-green-700 dark:text-green-400">
+            {formatEur(req.finalAmount ?? req.amount)}
           </div>
         </div>
       )}
@@ -225,81 +185,24 @@ function BillingCard({ req, adminUid }) {
         </div>
       )}
 
-      {/* Acciones admin para pending */}
-      {isPending && !picker && (
+      {isPending && (
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={handleReject}
             disabled={busy}
-            className="rounded-2xl bg-red-500/10 text-red-500 font-bold py-2.5 text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="rounded-2xl bg-red-500/10 text-red-500 font-bold py-3 text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-50"
           >
             <X size={16} /> Rechazar
           </button>
           <button
-            onClick={() => setPicker('approve')}
+            onClick={handleApprove}
             disabled={busy}
-            className="rounded-2xl bg-rk-orange text-white font-bold py-2.5 text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="rounded-2xl bg-emerald-500 text-white font-bold py-3 text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-50 shadow-md shadow-emerald-500/20"
           >
-            <Check size={16} /> Aprobar…
-          </button>
-        </div>
-      )}
-
-      {/* Picker — sirve tanto para aprobar como para editar */}
-      {picker && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 text-center">
-            {picker === 'edit' ? 'Nuevo multiplicador' : 'Multiplicador de la ruleta'}
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {[0.5, 1, 2].map((m) => {
-              const isCurrent = picker === 'edit' && req.multiplier === m
-              return (
-                <MultiplierButton
-                  key={m}
-                  label={m === 0.5 ? '½' : `×${m}`}
-                  detail={formatEur(req.amount * m)}
-                  onClick={() =>
-                    picker === 'edit' ? handleEdit(m) : handleApprove(m)
-                  }
-                  busy={busy}
-                  accent={isCurrent || (picker === 'approve' && m === 1)}
-                  current={isCurrent}
-                />
-              )
-            })}
-          </div>
-          <button
-            onClick={() => setPicker(null)}
-            disabled={busy}
-            className="w-full text-xs font-semibold text-rk-ink/50 dark:text-rk-cream/50 py-2"
-          >
-            Cancelar
+            <Check size={16} /> Aprobar
           </button>
         </div>
       )}
     </GlassCard>
-  )
-}
-
-function MultiplierButton({ label, detail, onClick, busy, accent, current }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={busy}
-      className={`rounded-2xl py-3 font-black flex flex-col items-center gap-0.5 active:scale-[0.96] transition-transform disabled:opacity-50 relative ${
-        accent
-          ? 'bg-rk-orange text-white'
-          : 'bg-black/5 dark:bg-white/5 text-rk-ink dark:text-rk-cream'
-      }`}
-    >
-      {current && (
-        <span className="absolute -top-1.5 -right-1.5 text-[8px] font-black uppercase bg-white text-rk-orange px-1.5 py-0.5 rounded-full shadow">
-          Actual
-        </span>
-      )}
-      <span className="text-xl">{label}</span>
-      <span className="text-[10px] font-semibold opacity-80">{detail}</span>
-    </button>
   )
 }
