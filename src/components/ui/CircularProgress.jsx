@@ -9,12 +9,12 @@ import { useEffect, useRef, useState } from 'react'
  *   2. Salta a 0 sin transición
  *   3. Anima desde 0 hasta el nuevo progreso
  *
- * Así, cuando un agente sube de rango y su progreso cae (p.ej. de 0.25
- * en Sénior a 0.05 en Élite), el anillo no retrocede visualmente.
+ * Además, dispara una pulsación de aura del color del nuevo rango.
  */
 export default function CircularProgress({
-  progress = 0, // 0–1
-  rankKey,      // identificador del rango actual; cambio = wrap forward
+  progress = 0,         // 0–1
+  rankKey,              // identificador del rango actual; cambio = wrap forward + aura
+  auraColor = '#cf731b',// color del aura al subir de nivel
   size = 200,
   strokeWidth = 14,
   color = '#cf731b',
@@ -27,6 +27,8 @@ export default function CircularProgress({
 
   const [displayed, setDisplayed] = useState(progress)
   const [animate, setAnimate] = useState(true)
+  const [auraKey, setAuraKey] = useState(0)
+  const [currentAuraColor, setCurrentAuraColor] = useState(auraColor)
   const prevRankKey = useRef(rankKey)
   const mounted = useRef(false)
 
@@ -46,16 +48,18 @@ export default function CircularProgress({
       rankKey !== oldRankKey
 
     if (rankChanged) {
+      // Disparar la pulsación de aura (cambiar key fuerza remount del div).
+      setCurrentAuraColor(auraColor)
+      setAuraKey((k) => k + 1)
+
       // 1) Completar el anillo actual (animación hacia adelante hasta 1).
       setAnimate(true)
       setDisplayed(1)
 
-      // 2) Cuando termine, saltar a 0 sin transición y luego animar al nuevo valor.
+      // 2) Al terminar, saltar a 0 sin transición y animar al nuevo valor.
       const t = setTimeout(() => {
         setAnimate(false)
         setDisplayed(0)
-        // Doble RAF para asegurar que el snap a 0 se aplica antes de reactivar
-        // la transición y arrancar el avance hasta `progress`.
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             setAnimate(true)
@@ -72,14 +76,29 @@ export default function CircularProgress({
     setAnimate(true)
     setDisplayed(progress)
     prevRankKey.current = rankKey
-  }, [progress, rankKey])
+  }, [progress, rankKey, auraColor])
 
   const clamped = Math.max(0, Math.min(1, displayed))
   const offset = circumference * (1 - clamped)
 
   return (
     <div className="relative inline-flex items-center justify-center">
-      <svg width={size} height={size} className="-rotate-90">
+      {/* Aura — sale del anillo al subir de rango */}
+      {auraKey > 0 && (
+        <div
+          key={auraKey}
+          aria-hidden
+          className="rank-aura-pulse absolute pointer-events-none rounded-full"
+          style={{
+            width: size,
+            height: size,
+            border: `4px solid ${currentAuraColor}`,
+            boxShadow: `0 0 24px 4px ${currentAuraColor}66`,
+          }}
+        />
+      )}
+
+      <svg width={size} height={size} className="-rotate-90 relative">
         {/* Track claro */}
         <circle
           cx={size / 2}
