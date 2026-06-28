@@ -88,6 +88,7 @@ export const RANKS = {
     max: 149,
     color: 'rank-prospectador',
     gradient: 'from-slate-400 to-slate-500',
+    auraColor: '#64748b',
     description: 'Construyendo los primeros cimientos.',
   },
   consolidado: {
@@ -97,6 +98,7 @@ export const RANKS = {
     max: 399,
     color: 'rank-consolidado',
     gradient: 'from-blue-400 to-blue-600',
+    auraColor: '#3b82f6',
     description: 'Ritmo sólido y constante.',
   },
   senior: {
@@ -106,6 +108,7 @@ export const RANKS = {
     max: 799,
     color: 'rank-senior',
     gradient: 'from-violet-400 to-purple-600',
+    auraColor: '#a855f7',
     description: 'Referente del equipo.',
   },
   elite: {
@@ -115,6 +118,7 @@ export const RANKS = {
     max: Infinity,
     color: 'rank-elite',
     gradient: 'from-rk-orange to-amber-500',
+    auraColor: '#cf731b',
     description: 'Top performer de la agencia.',
   },
   embajador: {
@@ -124,6 +128,7 @@ export const RANKS = {
     max: Infinity,
     color: 'rank-embajador',
     gradient: 'from-yellow-400 via-amber-500 to-rk-orange',
+    auraColor: '#f59e0b',
     description: 'Líder histórico de RK Palanca.',
   },
 }
