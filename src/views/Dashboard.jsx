@@ -40,7 +40,12 @@ export default function Dashboard() {
         <div className="relative flex flex-col items-center text-center">
           <RankBadge rankId={rank.id} size="md" />
           <div className="mt-6">
-            <CircularProgress progress={isEmbajador ? 1 : progress} size={200} strokeWidth={14}>
+            <CircularProgress
+              progress={isEmbajador ? 1 : progress}
+              rankKey={rank.id}
+              size={200}
+              strokeWidth={14}
+            >
               <div className="text-5xl font-black tracking-tight">{formatPoints(profile?.points)}</div>
               <div className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 mt-1">
                 puntos
