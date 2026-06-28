@@ -240,3 +240,16 @@
 * {
   -webkit-touch-callout: none;
 }
+
+/* ============================================================
+   Rank-up aura — pulsación que sale del anillo al subir de nivel
+   ============================================================ */
+@keyframes rank-aura {
+  0%   { transform: scale(1);    opacity: 0;   }
+  15%  { opacity: 0.55; }
+  100% { transform: scale(1.55); opacity: 0;   }
+}
+
+.rank-aura-pulse {
+  animation: rank-aura 1.2s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
