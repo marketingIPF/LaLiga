@@ -119,13 +119,13 @@ export default function Panel() {
 
         <nav className="ml-8 flex items-center gap-2">
           <Link
-            to="/agentes"
+            to="/panel/agentes"
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
           >
             <UserCog size={13} /> Agentes
           </Link>
           <Link
-            to="/equipos"
+            to="/panel/equipos"
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
           >
             <Users size={13} /> Equipos
