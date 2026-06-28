@@ -43,6 +43,7 @@ export default function Dashboard() {
             <CircularProgress
               progress={isEmbajador ? 1 : progress}
               rankKey={rank.id}
+              auraColor={rank.auraColor}
               size={200}
               strokeWidth={14}
             >
