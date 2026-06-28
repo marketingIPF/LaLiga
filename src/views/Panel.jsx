@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
-  Check, X, LogOut, Smartphone, Sun, Moon,
+  Check, X, LogOut, Smartphone, Sun, Moon, Users, UserCog,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -116,6 +116,21 @@ export default function Panel() {
             Panel Admin
           </h1>
         </div>
+
+        <nav className="ml-8 flex items-center gap-2">
+          <Link
+            to="/agentes"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
+          >
+            <UserCog size={13} /> Agentes
+          </Link>
+          <Link
+            to="/equipos"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
+          >
+            <Users size={13} /> Equipos
+          </Link>
+        </nav>
 
         <div className="ml-auto flex items-center gap-2">
           <Link
