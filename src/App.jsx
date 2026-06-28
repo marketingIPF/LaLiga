@@ -18,6 +18,8 @@ import GestionEquipos from './views/GestionEquipos'
 import GestionAgentes from './views/GestionAgentes'
 import Notificaciones from './views/Notificaciones'
 import Panel from './views/Panel'
+import PanelAgentes from './views/PanelAgentes'
+import PanelEquipos from './views/PanelEquipos'
 
 export default function App() {
   const { firebaseUser, profile, isAdmin, loading } = useAuth()
@@ -58,6 +60,8 @@ export default function App() {
       {isAdmin && (
         <Route element={<PanelLayout />}>
           <Route path="/panel" element={<Panel />} />
+          <Route path="/panel/agentes" element={<PanelAgentes />} />
+          <Route path="/panel/equipos" element={<PanelEquipos />} />
         </Route>
       )}
 
