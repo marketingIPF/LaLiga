@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 
 import AppLayout from './components/layout/AppLayout'
+import PanelLayout from './components/layout/PanelLayout'
 import Login from './views/Login'
 import Dashboard from './views/Dashboard'
 import AdminHome from './views/AdminHome'
@@ -16,6 +17,7 @@ import CambiarPassword from './views/CambiarPassword'
 import GestionEquipos from './views/GestionEquipos'
 import GestionAgentes from './views/GestionAgentes'
 import Notificaciones from './views/Notificaciones'
+import Panel from './views/Panel'
 
 export default function App() {
   const { firebaseUser, profile, isAdmin, loading } = useAuth()
@@ -52,6 +54,14 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Panel desktop — solo admins, layout sin BottomNav */}
+      {isAdmin && (
+        <Route element={<PanelLayout />}>
+          <Route path="/panel" element={<Panel />} />
+        </Route>
+      )}
+
+      {/* Resto de la app — mobile-first, con BottomNav */}
       <Route element={<AppLayout />}>
         <Route path="/" element={isAdmin ? <AdminHome /> : <Dashboard />} />
         <Route path="/ranking" element={<Ranking />} />

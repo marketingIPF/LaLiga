@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, TrendingUp, Users, Clock, Euro, RotateCcw, AlertTriangle, UserCog } from 'lucide-react'
+import { ChevronRight, TrendingUp, Users, Clock, Euro, RotateCcw, AlertTriangle, UserCog, Monitor } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useActionRequests } from '../hooks/useActionRequests'
@@ -36,6 +36,18 @@ export default function AdminHome() {
   return (
     <div className="space-y-6 animate-fade-in">
       <Header title={`Hola, ${firstName} 👋`} subtitle="Panel Admin" showLogout />
+
+      {/* Hint del panel desktop — solo visible en pantallas grandes */}
+      <Link to="/panel" className="hidden lg:flex items-center gap-3 rounded-2xl bg-rk-ink dark:bg-rk-cream/10 text-rk-cream dark:text-rk-cream px-4 py-3 active:scale-[0.98] transition-transform border border-rk-ink dark:border-rk-cream/10">
+        <div className="w-9 h-9 rounded-lg bg-rk-orange/20 text-rk-orange flex items-center justify-center shrink-0">
+          <Monitor size={17} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-sm">Panel desktop</div>
+          <div className="text-xs opacity-70">Versión optimizada para tu ordenador</div>
+        </div>
+        <ChevronRight size={18} className="opacity-70" />
+      </Link>
 
       {/* CTA aprobaciones */}
       <Link to="/aprobaciones" className="block">

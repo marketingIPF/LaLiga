@@ -7,13 +7,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['apple-touch-icon.png', 'favicon-32.png', 'favicon-16.png'],
       manifest: {
         name: 'La Liga · RK Palanca',
         short_name: 'La Liga',
         description: 'Gamificación para el equipo comercial de RK Palanca Fontestad',
         theme_color: '#cf731b',
-        background_color: '#0a0a0a',
+        background_color: '#faf5ee',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
