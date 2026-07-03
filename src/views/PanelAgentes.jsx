@@ -139,7 +139,7 @@ export default function PanelAgentes() {
                       </span>
                     ) : (
                       <span className="text-[11px] font-bold text-rk-ink/60 dark:text-rk-cream/60">
-                        Agente
+                        {u.role === 'Agente Comercial' ? 'Agente' : u.role}
                       </span>
                     )}
                   </div>

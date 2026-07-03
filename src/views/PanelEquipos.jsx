@@ -12,7 +12,7 @@ import { db, COL } from '../lib/firebase'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
-import { isAdminRole, GROUP_COLOR_PALETTE } from '../data/seedUsers'
+import { GROUP_COLOR_PALETTE, isCompetitor } from '../data/seedUsers'
 import { formatPoints, cn } from '../lib/utils'
 import { notifyTeamAssignment } from '../lib/notifications'
 import Avatar from '../components/ui/Avatar'
@@ -28,7 +28,7 @@ export default function PanelEquipos() {
   const [showCreate, setShowCreate] = useState(false)
 
   const agents = useMemo(
-    () => users.filter((u) => !isAdminRole(u.role)),
+    () => users.filter(isCompetitor),
     [users]
   )
 

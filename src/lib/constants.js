@@ -1,75 +1,183 @@
 // ====================================================================
 // La Liga · Sistema de puntos y rangos (RK Palanca Fontestad)
+// --------------------------------------------------------------------
+// v2 · Rediseño de gerencia:
+//  - Dos ligas: 'agentes' (Agentes Comerciales) y 'staff' (Staff + Obra Nueva)
+//  - Cada acción declara en qué ligas puntúa (leagues) y en cuáles
+//    puede solicitarla el propio usuario (selfService). El resto de
+//    puntos los carga un admin desde el panel (datos del CRM).
+//  - La facturación desaparece de la app.
 // ====================================================================
 
+export const LEAGUES = {
+  agentes: { id: 'agentes', label: 'Agentes' },
+  staff: { id: 'staff', label: 'Staff & Obra Nueva' },
+}
+
 export const ACTION_TYPES = {
-  captacion_propiedad: {
-    id: 'captacion_propiedad',
-    label: 'Captación de propiedad',
-    shortLabel: 'Captación',
-    points: 100,
-    icon: '🏠',
-    description: 'Has captado una nueva propiedad para la cartera.',
+  // ------------------ LIGA AGENTES (carga admin/CRM) ------------------
+  area_influencia: {
+    id: 'area_influencia',
+    label: 'Área de influencia',
+    shortLabel: 'Área infl.',
+    points: 2,
+    icon: '📍',
+    description: 'Contacto trabajado en tu área de influencia.',
+    leagues: ['agentes'],
+    selfService: [],
   },
-  venta_cerrada: {
-    id: 'venta_cerrada',
-    label: 'Venta cerrada',
-    shortLabel: 'Venta',
-    points: 150,
-    icon: '🤝',
-    description: 'Operación firmada y cerrada con éxito.',
-  },
-  captacion_exclusiva: {
-    id: 'captacion_exclusiva',
-    label: 'Captación en exclusiva',
-    shortLabel: 'Exclusiva (+50)',
-    points: 50,
-    icon: '⭐',
-    description: 'Bonus de +50 pts adicional a la captación estándar.',
-  },
-  resena_positiva: {
-    id: 'resena_positiva',
-    label: 'Reseña positiva de cliente',
-    shortLabel: 'Reseña',
-    points: 30,
-    icon: '⭐️',
-    description: 'Un cliente ha dejado una reseña positiva.',
-  },
-  referido: {
-    id: 'referido',
-    label: 'Referido que capta o vende',
-    shortLabel: 'Referido',
-    points: 40,
-    icon: '🔗',
-    description: 'Un referido tuyo ha materializado captación o venta.',
-  },
-  formacion_interna: {
-    id: 'formacion_interna',
-    label: 'Formación interna completada',
-    shortLabel: 'Formación',
-    points: 20,
-    icon: '🎓',
-    description: 'Has completado una formación interna.',
-  },
-  asistencia_reunion: {
-    id: 'asistencia_reunion',
-    label: 'Asistencia a reunión',
-    shortLabel: 'Reunión',
+  llamada_prospeccion: {
+    id: 'llamada_prospeccion',
+    label: 'Llamada de prospección',
+    shortLabel: 'Prospección',
     points: 10,
-    icon: '📅',
-    description: 'Asistencia confirmada a reunión de equipo.',
+    icon: '📞',
+    description: 'Llamada de prospección realizada.',
+    leagues: ['agentes'],
+    selfService: [],
   },
+  win_win: {
+    id: 'win_win',
+    label: 'Win Win',
+    shortLabel: 'Win Win',
+    points: 10,
+    icon: '🤝',
+    description: 'Colaboración Win Win materializada.',
+    leagues: ['agentes', 'staff'],
+    selfService: ['staff'],
+  },
+  comercio_aliado: {
+    id: 'comercio_aliado',
+    label: 'Comercio aliado',
+    shortLabel: 'Comercio',
+    points: 10,
+    icon: '🏪',
+    description: 'Nuevo comercio aliado incorporado.',
+    leagues: ['agentes', 'staff'],
+    selfService: ['staff'],
+  },
+  entrevista_m1: {
+    id: 'entrevista_m1',
+    label: 'Entrevista M1',
+    shortLabel: 'M1',
+    points: 50,
+    icon: '🎯',
+    description: 'Entrevista M1 completada.',
+    leagues: ['agentes'],
+    selfService: [],
+  },
+  entrevista_m2: {
+    id: 'entrevista_m2',
+    label: 'Entrevista M2',
+    shortLabel: 'M2',
+    points: 75,
+    icon: '🎯',
+    description: 'Entrevista M2 completada.',
+    leagues: ['agentes'],
+    selfService: [],
+  },
+  entrevista_m3: {
+    id: 'entrevista_m3',
+    label: 'Entrevista M3',
+    shortLabel: 'M3',
+    points: 125,
+    icon: '🎯',
+    description: 'Entrevista M3 completada.',
+    leagues: ['agentes'],
+    selfService: [],
+  },
+  resena: {
+    id: 'resena',
+    label: 'Reseña de cliente',
+    shortLabel: 'Reseña',
+    points: 5,
+    icon: '⭐️',
+    description: 'Un cliente ha dejado una reseña.',
+    leagues: ['agentes'],
+    selfService: [],
+  },
+  resena_google_maps: {
+    id: 'resena_google_maps',
+    label: 'Reseña en Google Maps',
+    shortLabel: 'G. Maps',
+    points: 5,
+    icon: '🗺️',
+    description: 'Reseña conseguida en Google Maps.',
+    leagues: ['agentes', 'staff'],
+    selfService: ['staff'],
+  },
+
+  // ------------------ AUTOSERVICIO AGENTES ------------------
   publicar_rrss: {
     id: 'publicar_rrss',
     label: 'Publicar en RRSS',
     shortLabel: 'RRSS',
-    points: 15,
+    points: 5,
     icon: '📱',
-    description: 'Publicación en mi Instagram / WhatsApp.',
+    description: 'Publicación en tu Instagram / WhatsApp.',
+    leagues: ['agentes'],
+    selfService: ['agentes'],
+  },
+  grabar_reel: {
+    id: 'grabar_reel',
+    label: 'Grabar para un Reel',
+    shortLabel: 'Reel',
+    points: 10,
+    icon: '🎬',
+    description: 'Has grabado contenido para un Reel de la agencia.',
+    leagues: ['agentes', 'staff'],
+    selfService: ['agentes', 'staff'],
+  },
+  formacion: {
+    id: 'formacion',
+    label: 'Formación / Entrenamiento',
+    shortLabel: 'Formación',
+    points: 10,
+    icon: '🎓',
+    description: 'Adjunta en las notas el resultado de tu entrenamiento.',
+    leagues: ['agentes'],
+    selfService: ['agentes'],
+    requiresEvidence: true,
+  },
+  crear_evento: {
+    id: 'crear_evento',
+    label: 'Crear un evento',
+    shortLabel: 'Evento',
+    points: 200,
+    icon: '🎪',
+    description: 'Has organizado un evento de la agencia.',
+    leagues: ['agentes'],
+    selfService: ['agentes'],
+  },
+
+  // ------------------ SOLO LIGA STAFF ------------------
+  liebres: {
+    id: 'liebres',
+    label: 'Liebres',
+    shortLabel: 'Liebres',
+    points: 10,
+    icon: '🐇',
+    description: 'Liebre aportada al equipo comercial.',
+    leagues: ['staff'],
+    selfService: ['staff'],
   },
 }
 
 export const ACTION_LIST = Object.values(ACTION_TYPES)
+
+/**
+ * Acciones que puntúan en una liga.
+ */
+export function actionsForLeague(league) {
+  return ACTION_LIST.filter((a) => a.leagues.includes(league))
+}
+
+/**
+ * Acciones que un usuario puede solicitar él mismo según su liga.
+ */
+export function selfServiceActions(league) {
+  return ACTION_LIST.filter((a) => a.selfService.includes(league))
+}
 
 // --------------------------------------------------------------------
 // Rangos
@@ -189,29 +297,29 @@ export function getNextRankProgress(points = 0) {
 // Logros del muro
 // --------------------------------------------------------------------
 export const ACHIEVEMENT_TYPES = {
-  primera_captacion: {
-    id: 'primera_captacion',
-    label: 'Primera captación',
-    icon: '🚀',
-    description: 'Registró su primera captación del periodo.',
+  rey_prospeccion: {
+    id: 'rey_prospeccion',
+    label: 'Rey de la prospección',
+    icon: '📞',
+    description: 'Más llamadas de prospección del periodo.',
   },
-  rey_captaciones: {
-    id: 'rey_captaciones',
-    label: 'Rey de las captaciones',
-    icon: '👑',
-    description: 'Más captaciones del periodo.',
+  maestro_entrevistas: {
+    id: 'maestro_entrevistas',
+    label: 'Maestro de entrevistas',
+    icon: '🎯',
+    description: 'Más entrevistas (M1-M3) del periodo.',
   },
-  cerrador: {
-    id: 'cerrador',
-    label: 'Cerrador del mes',
-    icon: '💼',
-    description: 'Más ventas cerradas del periodo.',
+  creador_eventos: {
+    id: 'creador_eventos',
+    label: 'Creador de eventos',
+    icon: '🎪',
+    description: 'Ha organizado un evento este periodo.',
   },
   constancia: {
     id: 'constancia',
     label: 'Constancia',
     icon: '🔥',
-    description: '4+ semanas consecutivas con actividad.',
+    description: '4+ acciones aprobadas en el periodo.',
   },
   embajador_historico: {
     id: 'embajador_historico',

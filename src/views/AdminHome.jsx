@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, TrendingUp, Users, Clock, Euro, RotateCcw, AlertTriangle, UserCog, Monitor } from 'lucide-react'
+import { ChevronRight, TrendingUp, Users, Clock, RotateCcw, AlertTriangle, UserCog, Monitor } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useActionRequests } from '../hooks/useActionRequests'
-import { useBillingRequests } from '../hooks/useBillingRequests'
 import { useGroups } from '../hooks/useGroups'
 import { isAdminRole } from '../data/seedUsers'
 import { formatPoints, relativeDate } from '../lib/utils'
@@ -14,21 +13,17 @@ import Header from '../components/layout/Header'
 import GlassCard from '../components/ui/GlassCard'
 import Avatar from '../components/ui/Avatar'
 
-const formatEur = (n) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n ?? 0)
 
 export default function AdminHome() {
   const { profile } = useAuth()
   const { users } = useUsers()
   const { groups } = useGroups()
   const { requests: pending } = useActionRequests({ status: 'pending' })
-  const { requests: pendingBilling } = useBillingRequests({ status: 'pending' })
 
   const [showReset, setShowReset] = useState(false)
 
   const agents = users.filter((u) => !isAdminRole(u.role))
   const totalPoints = agents.reduce((acc, u) => acc + (u.points ?? 0), 0)
-  const totalBilling = agents.reduce((acc, u) => acc + (u.periodBilling ?? 0), 0)
   const totalLifetime = agents.reduce((acc, u) => acc + (u.lifetimePoints ?? 0), 0)
 
   const firstName = profile?.name?.split(' ')[0] ?? ''
@@ -72,28 +67,6 @@ export default function AdminHome() {
       </Link>
 
       {/* CTA facturación */}
-      <Link to="/facturacion-aprobar" className="block">
-        <div className="glass rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
-            <Euro size={20} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm">Aprobar facturación</div>
-            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
-              {pendingBilling.length === 0
-                ? 'No hay facturaciones esperando'
-                : `${pendingBilling.length} ${pendingBilling.length === 1 ? 'facturación pendiente' : 'facturaciones pendientes'}`}
-            </div>
-          </div>
-          {pendingBilling.length > 0 && (
-            <span className="bg-rk-orange text-white text-xs font-black rounded-full w-6 h-6 flex items-center justify-center">
-              {pendingBilling.length}
-            </span>
-          )}
-          <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
-        </div>
-      </Link>
-
       {/* CTA equipos */}
       <Link to="/equipos" className="block">
         <div className="glass rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
@@ -134,11 +107,6 @@ export default function AdminHome() {
           icon={<TrendingUp size={18} className="text-rk-orange" />}
           label="Puntos del periodo"
           value={formatPoints(totalPoints)}
-        />
-        <MetricCard
-          icon={<Euro size={18} className="text-rk-orange" />}
-          label="Facturado periodo"
-          value={formatEur(totalBilling)}
         />
         <MetricCard
           icon={<Users size={18} className="text-rk-orange" />}
@@ -200,7 +168,6 @@ export default function AdminHome() {
       {showReset && <ResetModal onClose={() => setShowReset(false)} stats={{
         agents: agents.length,
         points: totalPoints,
-        billing: totalBilling,
         lifetimePoints: totalLifetime,
         actionRequests: pending.length, // solo pendientes visible, pero el reset borra todas
       }} />}
@@ -274,7 +241,7 @@ function ResetModal({ onClose, stats }) {
             </h2>
             <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60">
               {done.mode === 'todo'
-                ? `${done.users} usuarios · ${done.groups} equipos · ${done.actionRequests + done.billingRequests} solicitudes borradas`
+                ? `${done.users} usuarios · ${done.groups} equipos · ${done.actionRequests} solicitudes borradas`
                 : `${done.users} usuarios y ${done.groups} equipos a cero`}
             </p>
           </div>
@@ -314,7 +281,6 @@ function ResetModal({ onClose, stats }) {
               isFull ? 'bg-red-500/5 border border-red-500/20' : 'bg-black/5 dark:bg-white/5'
             }`}>
               <Row label="Puntos del periodo" value={`${formatPoints(stats.points)} → 0`} />
-              <Row label="Facturación del periodo" value={`${formatEur(stats.billing)} → 0 €`} />
               {isFull ? (
                 <>
                   <Row
@@ -324,7 +290,6 @@ function ResetModal({ onClose, stats }) {
                   />
                   <Row label="Facturación histórica" value="→ 0 €" danger />
                   <Row label="Todas las acciones" value="se borran" danger />
-                  <Row label="Todas las facturaciones" value="se borran" danger />
                 </>
               ) : (
                 <>

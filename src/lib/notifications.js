@@ -101,12 +101,23 @@ export async function checkAndNotifyTop3() {
     const allSnap = await getDocs(collection(db, COL.users))
     const allUsers = allSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
 
-    const agents = allUsers
-      .filter((u) => u.role === 'Agente Comercial')
-      .filter((u) => (u.points || 0) > 0) // sólo agentes con puntos cuentan
-      .sort((a, b) => (b.points || 0) - (a.points || 0))
+    const leagueOf = (u) => {
+      if (u.league) return u.league
+      if (u.role === 'Agente Comercial') return 'agentes'
+      if (u.role === 'Staff' || u.role === 'Obra Nueva') return 'staff'
+      return null
+    }
 
-    const newTop3Ids = new Set(agents.slice(0, 3).map((u) => u.id))
+    // Top 3 de cada liga por separado
+    const newTop3Ids = new Set()
+    for (const league of ['agentes', 'staff']) {
+      const competitors = allUsers
+        .filter((u) => leagueOf(u) === league)
+        .filter((u) => (u.points || 0) > 0)
+        .sort((a, b) => (b.points || 0) - (a.points || 0))
+      competitors.slice(0, 3).forEach((u) => newTop3Ids.add(u.id))
+    }
+
     const previouslyFlagged = new Set(
       allUsers.filter((u) => u.inTop3 === true).map((u) => u.id)
     )
@@ -125,7 +136,7 @@ export async function checkAndNotifyTop3() {
         userId,
         type: 'top3_ranking',
         title: '🏆 ¡Estás en el top 3!',
-        message: 'Acabas de entrar en el podio del ranking. A por el primer puesto.',
+        message: 'Acabas de entrar en el podio de tu liga. A por el primer puesto.',
         link: '/ranking',
         read: false,
         createdAt: serverTimestamp(),
@@ -148,12 +159,6 @@ export async function checkAndNotifyTop3() {
 // Formateo de importes en € para los mensajes
 // ----------------------------------------------------------------
 
-const formatEur = (n) =>
-  new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  }).format(n ?? 0)
 
 // ----------------------------------------------------------------
 // Helpers específicos por evento (los views/hooks llaman a estos)
@@ -188,35 +193,8 @@ export async function notifyActionRejected({ userId, actionLabel }) {
   })
 }
 
-export async function notifyBillingPending({ agentName, amount }) {
-  return notifyAllAdmins({
-    type: 'billing_pending',
-    title: '💰 Nueva facturación',
-    message: `${agentName} ha reportado ${formatEur(amount)}`,
-    link: '/facturacion-aprobar',
-  })
-}
 
-export async function notifyBillingApproved({ userId, amount, finalAmount }) {
-  // finalAmount === amount ahora porque el bonus se aplica fuera de la app.
-  return createNotification({
-    userId,
-    type: 'billing_approved',
-    title: '💰 Facturación aprobada',
-    message: `Te han validado ${formatEur(finalAmount ?? amount)}.`,
-    link: '/',
-  })
-}
 
-export async function notifyBillingRejected({ userId, amount }) {
-  return createNotification({
-    userId,
-    type: 'billing_rejected',
-    title: '❌ Facturación no aprobada',
-    message: `Tu facturación de ${formatEur(amount)} no ha sido aprobada.`,
-    link: '/',
-  })
-}
 
 export async function notifyTeamAssignment({ userId, teamName }) {
   return createNotification({

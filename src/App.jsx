@@ -10,8 +10,6 @@ import Ranking from './views/Ranking'
 import Logros from './views/Logros'
 import RegistrarAccion from './views/RegistrarAccion'
 import Aprobaciones from './views/Aprobaciones'
-import RegistrarFacturacion from './views/RegistrarFacturacion'
-import AprobarFacturacion from './views/AprobarFacturacion'
 import Perfil from './views/Perfil'
 import CambiarPassword from './views/CambiarPassword'
 import GestionEquipos from './views/GestionEquipos'
@@ -20,6 +18,7 @@ import Notificaciones from './views/Notificaciones'
 import Panel from './views/Panel'
 import PanelAgentes from './views/PanelAgentes'
 import PanelEquipos from './views/PanelEquipos'
+import PanelPuntos from './views/PanelPuntos'
 
 export default function App() {
   const { firebaseUser, profile, isAdmin, loading } = useAuth()
@@ -62,6 +61,7 @@ export default function App() {
           <Route path="/panel" element={<Panel />} />
           <Route path="/panel/agentes" element={<PanelAgentes />} />
           <Route path="/panel/equipos" element={<PanelEquipos />} />
+          <Route path="/panel/puntos" element={<PanelPuntos />} />
         </Route>
       )}
 
@@ -76,9 +76,7 @@ export default function App() {
         {isAdmin && <Route path="/aprobaciones" element={<Aprobaciones />} />}
         {isAdmin && <Route path="/equipos" element={<GestionEquipos />} />}
         {isAdmin && <Route path="/agentes" element={<GestionAgentes />} />}
-        {isAdmin && <Route path="/facturacion-aprobar" element={<AprobarFacturacion />} />}
         {!isAdmin && <Route path="/registrar" element={<RegistrarAccion />} />}
-        {!isAdmin && <Route path="/facturacion" element={<RegistrarFacturacion />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

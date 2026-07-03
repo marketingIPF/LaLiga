@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useUsers } from '../hooks/useUsers'
 import { useActionRequests } from '../hooks/useActionRequests'
-import { isAdminRole } from '../data/seedUsers'
+import { isCompetitor } from '../data/seedUsers'
 import { ACHIEVEMENT_TYPES } from '../lib/constants'
 import { formatPoints } from '../lib/utils'
 import Header from '../components/layout/Header'
@@ -14,7 +14,7 @@ export default function Logros() {
   const { requests } = useActionRequests({ status: 'approved' })
 
   const agents = useMemo(
-    () => users.filter((u) => !isAdminRole(u.role)),
+    () => users.filter(isCompetitor),
     [users]
   )
 
@@ -26,13 +26,14 @@ export default function Logros() {
       (a, b) => (b.lifetimePoints ?? 0) - (a.lifetimePoints ?? 0)
     )[0]
 
-    // Conteo de acciones aprobadas por agente
+    // Conteo de acciones aprobadas por persona
     const byAgent = {}
     requests.forEach((r) => {
-      if (!byAgent[r.userId]) byAgent[r.userId] = { captaciones: 0, ventas: 0, total: 0 }
+      if (!byAgent[r.userId]) byAgent[r.userId] = { prospeccion: 0, entrevistas: 0, eventos: 0, total: 0 }
       byAgent[r.userId].total++
-      if (r.actionType === 'captacion_propiedad') byAgent[r.userId].captaciones++
-      if (r.actionType === 'venta_cerrada') byAgent[r.userId].ventas++
+      if (r.actionType === 'llamada_prospeccion') byAgent[r.userId].prospeccion++
+      if (['entrevista_m1', 'entrevista_m2', 'entrevista_m3'].includes(r.actionType)) byAgent[r.userId].entrevistas++
+      if (r.actionType === 'crear_evento') byAgent[r.userId].eventos++
     })
 
     const pickTop = (key) => {
@@ -43,8 +44,9 @@ export default function Logros() {
       return list[0]
     }
 
-    const reyCaptaciones = pickTop('captaciones')
-    const cerrador = pickTop('ventas')
+    const reyProspeccion = pickTop('prospeccion')
+    const maestroEntrevistas = pickTop('entrevistas')
+    const creadorEventos = pickTop('eventos')
 
     // Constancia: más acciones totales aprobadas
     const constante = agents
@@ -58,15 +60,20 @@ export default function Logros() {
         agent: embajador,
         stat: `${formatPoints(embajador.lifetimePoints)} pts históricos`,
       },
-      reyCaptaciones && {
-        ...ACHIEVEMENT_TYPES.rey_captaciones,
-        agent: reyCaptaciones,
-        stat: `${reyCaptaciones.count} captaciones`,
+      reyProspeccion && {
+        ...ACHIEVEMENT_TYPES.rey_prospeccion,
+        agent: reyProspeccion,
+        stat: `${reyProspeccion.count} llamadas de prospección`,
       },
-      cerrador && {
-        ...ACHIEVEMENT_TYPES.cerrador,
-        agent: cerrador,
-        stat: `${cerrador.count} ventas`,
+      maestroEntrevistas && {
+        ...ACHIEVEMENT_TYPES.maestro_entrevistas,
+        agent: maestroEntrevistas,
+        stat: `${maestroEntrevistas.count} entrevistas`,
+      },
+      creadorEventos && {
+        ...ACHIEVEMENT_TYPES.creador_eventos,
+        agent: creadorEventos,
+        stat: `${creadorEventos.count} ${creadorEventos.count === 1 ? 'evento' : 'eventos'}`,
       },
       constante && {
         ...ACHIEVEMENT_TYPES.constancia,

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
-  Check, X, LogOut, Smartphone, Sun, Moon, Users, UserCog,
+  Check, X, LogOut, Smartphone, Sun, Moon, Users, UserCog, ClipboardList,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -12,12 +12,7 @@ import {
   approveRequest,
   rejectRequest,
 } from '../hooks/useActionRequests'
-import {
-  useBillingRequests,
-  approveBillingRequest,
-  rejectBillingRequest,
-} from '../hooks/useBillingRequests'
-import { isAdminRole } from '../data/seedUsers'
+import { isAdminRole, getUserLeague } from '../data/seedUsers'
 import { formatPoints, relativeDate, cn } from '../lib/utils'
 import Avatar from '../components/ui/Avatar'
 import NotificationBell from '../components/ui/NotificationBell'
@@ -25,12 +20,6 @@ import NotificationBell from '../components/ui/NotificationBell'
 // ====================================================================
 // Utilidades
 // ====================================================================
-const formatEur = (n) =>
-  new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  }).format(n ?? 0)
 
 function tsMs(value) {
   if (!value) return 0
@@ -49,39 +38,37 @@ export default function Panel() {
   const { users } = useUsers()
   const { groups } = useGroups()
   const { requests: pendingActions } = useActionRequests({ status: 'pending' })
-  const { requests: pendingBilling } = useBillingRequests({ status: 'pending' })
   const { requests: approvedActions } = useActionRequests({ status: 'approved' })
-  const { requests: approvedBilling } = useBillingRequests({ status: 'approved' })
 
   const agents = useMemo(
-    () => users.filter((u) => !isAdminRole(u.role)),
+    () => users.filter((u) => getUserLeague(u) === 'agentes'),
+    [users]
+  )
+
+  const staffLeague = useMemo(
+    () => users.filter((u) => getUserLeague(u) === 'staff'),
     [users]
   )
 
   const totals = useMemo(() => {
     const points = agents.reduce((acc, u) => acc + (u.points || 0), 0)
-    const billing = agents.reduce((acc, u) => acc + (u.periodBilling || 0), 0)
-    return { points, billing }
-  }, [agents])
+    const staffPoints = staffLeague.reduce((acc, u) => acc + (u.points || 0), 0)
+    return { points, staffPoints }
+  }, [agents, staffLeague])
 
   const weekDeltas = useMemo(() => {
     const cutoff = Date.now() - 7 * 24 * 3600 * 1000
     const points = approvedActions
       .filter((r) => tsMs(r.reviewedAt) >= cutoff)
       .reduce((acc, r) => acc + (r.points || 0), 0)
-    const billing = approvedBilling
-      .filter((r) => tsMs(r.reviewedAt) >= cutoff)
-      .reduce((acc, r) => acc + (r.finalAmount || r.amount || 0), 0)
-    return { points, billing }
-  }, [approvedActions, approvedBilling])
+    return { points }
+  }, [approvedActions])
 
-  const pending = useMemo(() => {
-    const actions = pendingActions.map((r) => ({ ...r, kind: 'action' }))
-    const billings = pendingBilling.map((r) => ({ ...r, kind: 'billing' }))
-    return [...actions, ...billings].sort(
-      (a, b) => tsMs(b.createdAt) - tsMs(a.createdAt)
-    )
-  }, [pendingActions, pendingBilling])
+  const pending = useMemo(
+    () =>
+      [...pendingActions].sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt)),
+    [pendingActions]
+  )
 
   const top5 = useMemo(
     () =>
@@ -89,6 +76,14 @@ export default function Panel() {
         .sort((a, b) => (b.points || 0) - (a.points || 0))
         .slice(0, 5),
     [agents]
+  )
+
+  const top3Staff = useMemo(
+    () =>
+      [...staffLeague]
+        .sort((a, b) => (b.points || 0) - (a.points || 0))
+        .slice(0, 3),
+    [staffLeague]
   )
 
   const teams = useMemo(
@@ -129,6 +124,12 @@ export default function Panel() {
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
           >
             <Users size={13} /> Equipos
+          </Link>
+          <Link
+            to="/panel/puntos"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-rk-orange/10 text-rk-orange hover:bg-rk-orange/15 transition"
+          >
+            <ClipboardList size={13} /> Cargar puntos
           </Link>
         </nav>
 
@@ -183,19 +184,14 @@ export default function Panel() {
           subUp={weekDeltas.points > 0}
         />
         <KpiCard
-          label="FACTURACIÓN"
-          value={formatEur(totals.billing)}
-          sub={
-            weekDeltas.billing > 0
-              ? `+${formatEur(weekDeltas.billing)} esta semana`
-              : 'Sin movimiento'
-          }
-          subUp={weekDeltas.billing > 0}
+          label="PUNTOS STAFF & OBRA NUEVA"
+          value={formatPoints(totals.staffPoints)}
+          sub={`${staffLeague.length} participantes`}
         />
         <KpiCard
           label="PENDIENTES DE APROBAR"
           value={pending.length}
-          sub={`${pendingActions.length} ${pendingActions.length === 1 ? 'acción' : 'acciones'} · ${pendingBilling.length} ${pendingBilling.length === 1 ? 'facturación' : 'facturaciones'}`}
+          sub={pending.length === 0 ? 'Todo al día' : 'solicitudes esperando'}
           accent
         />
       </div>
@@ -205,7 +201,8 @@ export default function Panel() {
         <PendingPanel pending={pending} adminUid={firebaseUser?.uid} />
 
         <div className="flex flex-col gap-4">
-          <RankingMini top5={top5} />
+          <RankingMini competitors={top5} tag="EL BOLETÍN" title="Top 5 · Agentes" />
+          <RankingMini competitors={top3Staff} tag="EL BOLETÍN" title="Top 3 · Staff & ON" />
           <TeamsChart teams={teams} maxPts={maxTeamPts} />
         </div>
       </div>
@@ -308,17 +305,11 @@ function PendingItem({ item, adminUid }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
-  const isBilling = item.kind === 'billing'
-
   async function handleApprove() {
     setError(null)
     setBusy(true)
     try {
-      if (isBilling) {
-        await approveBillingRequest({ requestId: item.id, adminUid })
-      } else {
-        await approveRequest({ requestId: item.id, adminUid })
-      }
+      await approveRequest({ requestId: item.id, adminUid })
     } catch (e) {
       setError(e.message ?? 'Error')
       setBusy(false)
@@ -329,24 +320,15 @@ function PendingItem({ item, adminUid }) {
     setError(null)
     setBusy(true)
     try {
-      if (isBilling) {
-        await rejectBillingRequest({ requestId: item.id, adminUid })
-      } else {
-        await rejectRequest({ requestId: item.id, adminUid })
-      }
+      await rejectRequest({ requestId: item.id, adminUid })
     } catch (e) {
       setError(e.message ?? 'Error')
       setBusy(false)
     }
   }
 
-  const meta = isBilling
-    ? `Facturación · ${formatEur(item.amount)} · ${relativeDate(item.createdAt)}`
-    : `${item.actionLabel} · ${relativeDate(item.createdAt)}`
-
-  const amount = isBilling
-    ? formatEur(item.amount)
-    : `+${item.points}`
+  const meta = `${item.actionLabel} · ${relativeDate(item.createdAt)}`
+  const amount = `+${item.points}`
 
   return (
     <div className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.03] rounded-xl border border-black/[0.04] dark:border-white/[0.04]">
@@ -357,12 +339,7 @@ function PendingItem({ item, adminUid }) {
           {meta}
         </div>
       </div>
-      <div
-        className={cn(
-          'font-black text-rk-orange whitespace-nowrap',
-          isBilling ? 'text-[13.5px]' : 'text-base'
-        )}
-      >
+      <div className="font-black text-rk-orange whitespace-nowrap text-base">
         {amount}
       </div>
       <button
@@ -391,16 +368,16 @@ function PendingItem({ item, adminUid }) {
 // ====================================================================
 // Ranking Top 5
 // ====================================================================
-function RankingMini({ top5 }) {
+function RankingMini({ competitors, tag, title }) {
   return (
-    <PanelSection tag="EL BOLETÍN" title="Top 5 · Puntos">
-      {top5.length === 0 ? (
+    <PanelSection tag={tag} title={title}>
+      {competitors.length === 0 ? (
         <div className="text-sm text-rk-ink/50 dark:text-rk-cream/50 py-4">
           Sin datos todavía.
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
-          {top5.map((u, i) => (
+          {competitors.map((u, i) => (
             <div
               key={u.id}
               className={cn(

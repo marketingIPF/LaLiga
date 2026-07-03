@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { ACTION_LIST, ACTION_TYPES } from '../lib/constants'
+import { ACTION_TYPES, selfServiceActions } from '../lib/constants'
+import { getUserLeague } from '../data/seedUsers'
 import { submitActionRequest } from '../hooks/useActionRequests'
 import { cn } from '../lib/utils'
 import GlassCard from '../components/ui/GlassCard'
@@ -11,6 +12,9 @@ export default function RegistrarAccion() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
+
+  const league = getUserLeague(profile) ?? 'agentes'
+  const AVAILABLE = selfServiceActions(league)
 
   const [selectedIds, setSelectedIds] = useState(() => {
     const tipo = params.get('tipo')
@@ -44,13 +48,18 @@ export default function RegistrarAccion() {
     })
   }
 
-  const selectedActions = ACTION_LIST.filter((a) => selectedIds.has(a.id))
+  const selectedActions = AVAILABLE.filter((a) => selectedIds.has(a.id))
   const totalPoints = selectedActions.reduce((acc, a) => acc + a.points, 0)
   const count = selectedActions.length
 
   const handleSubmit = async () => {
     if (count === 0) {
       setError('Selecciona al menos una acción.')
+      return
+    }
+    const needsEvidence = selectedActions.some((a) => a.requiresEvidence)
+    if (needsEvidence && notes.trim().length < 10) {
+      setError('Para Formación/Entrenamiento, describe en las notas el resultado de tu entrenamiento (mínimo unas palabras).')
       return
     }
     setSubmitting(true)
@@ -109,11 +118,11 @@ export default function RegistrarAccion() {
       </header>
 
       <p className="text-sm text-rk-ink/70 dark:text-rk-cream/70">
-        Marca todas las acciones que apliquen (por ejemplo, captación + exclusiva). Un admin las validará y sumará los puntos.
+        Marca todas las acciones que apliquen. Un admin las validará y sumará los puntos. El resto de puntos (prospección, entrevistas…) los carga administración desde el CRM.
       </p>
 
       <div className="space-y-2.5">
-        {ACTION_LIST.map((action) => {
+        {AVAILABLE.map((action) => {
           const isSelected = selectedIds.has(action.id)
           return (
             <button
@@ -152,7 +161,7 @@ export default function RegistrarAccion() {
 
       <GlassCard>
         <label className="block text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 mb-2">
-          Notas (opcional)
+          {selectedActions.some((a) => a.requiresEvidence) ? 'Notas · resultado del entrenamiento (obligatorio)' : 'Notas (opcional)'}
         </label>
         <textarea
           value={notes}
