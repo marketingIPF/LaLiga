@@ -16,13 +16,13 @@ export const LEAGUES = {
 
 export const ACTION_TYPES = {
   // ------------------ LIGA AGENTES (carga admin/CRM) ------------------
-  area_influencia: {
-    id: 'area_influencia',
-    label: 'Área de influencia',
-    shortLabel: 'Área infl.',
+  llamada_cortesia: {
+    id: 'llamada_cortesia',
+    label: 'Llamada de cortesía',
+    shortLabel: 'Cortesía',
     points: 2,
     icon: '📍',
-    description: 'Contacto trabajado en tu área de influencia.',
+    description: 'Llamada de cortesía realizada.',
     leagues: ['agentes'],
     selfService: [],
   },
@@ -30,7 +30,7 @@ export const ACTION_TYPES = {
     id: 'llamada_prospeccion',
     label: 'Llamada de prospección',
     shortLabel: 'Prospección',
-    points: 10,
+    points: 2,
     icon: '📞',
     description: 'Llamada de prospección realizada.',
     leagues: ['agentes'],
@@ -42,7 +42,7 @@ export const ACTION_TYPES = {
     shortLabel: 'Win Win',
     points: 10,
     icon: '🤝',
-    description: 'Colaboración Win Win materializada.',
+    description: 'Colaboración Win Win con contrato firmado.',
     leagues: ['agentes', 'staff'],
     selfService: ['staff'],
   },
@@ -86,13 +86,13 @@ export const ACTION_TYPES = {
     leagues: ['agentes'],
     selfService: [],
   },
-  resena: {
-    id: 'resena',
-    label: 'Reseña de cliente',
-    shortLabel: 'Reseña',
+  bajada_precio: {
+    id: 'bajada_precio',
+    label: 'Bajada de precio',
+    shortLabel: 'Bajada precio',
     points: 5,
-    icon: '⭐️',
-    description: 'Un cliente ha dejado una reseña.',
+    icon: '📉',
+    description: 'Has conseguido una bajada de precio del propietario.',
     leagues: ['agentes'],
     selfService: [],
   },
