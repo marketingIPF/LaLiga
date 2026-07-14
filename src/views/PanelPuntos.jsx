@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, Check, Minus, Plus, Camera, Loader2, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Check, Minus, Plus } from 'lucide-react'
 import {
   collection, doc, writeBatch, serverTimestamp, increment,
 } from 'firebase/firestore'
@@ -31,10 +31,6 @@ export default function PanelPuntos() {
   const [done, setDone] = useState(null)
   const [error, setError] = useState(null)
 
-  // Modo captura
-  const [parsing, setParsing] = useState(false)
-  const [parseInfo, setParseInfo] = useState(null) // { matched, unmatched: [{name, count}] }
-
   const actions = useMemo(() => actionsForLeague(league), [league])
   const action = actions.find((a) => a.id === actionId) ?? null
 
@@ -48,91 +44,12 @@ export default function PanelPuntos() {
 
   if (!isAdmin) return <Navigate to="/" replace />
 
-  // ------- Captura del CRM → contadores -------
-  const normalize = (s) =>
-    s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9 ]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-
-  function matchUser(name) {
-    const target = normalize(name)
-    if (!target) return null
-    const targetTokens = target.split(' ')
-
-    let best = null
-    let bestScore = 0
-    for (const u of competitors) {
-      const uNorm = normalize(u.name)
-      if (uNorm === target) return u
-      const uTokens = uNorm.split(' ')
-      // puntuación: tokens compartidos (nombre y apellidos)
-      const shared = targetTokens.filter((t) => uTokens.includes(t)).length
-      const score = shared / Math.max(targetTokens.length, 1)
-      if (score > bestScore) {
-        bestScore = score
-        best = u
-      }
-    }
-    // exigimos al menos que coincida el nombre o buena parte
-    return bestScore >= 0.5 ? best : null
-  }
-
-  async function handleCapture(e) {
-    const file = e.target.files?.[0]
-    e.target.value = '' // permite re-subir el mismo archivo
-    if (!file) return
-    setParsing(true)
-    setError(null)
-    setParseInfo(null)
-    try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result).split(',')[1])
-        reader.onerror = () => reject(new Error('No se pudo leer el archivo'))
-        reader.readAsDataURL(file)
-      })
-
-      const resp = await fetch('/api/parse-crm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, mimeType: file.type || 'image/png' }),
-      })
-      const data = await resp.json()
-      if (!resp.ok) throw new Error(data.error || 'Error al procesar')
-
-      const rows = data.rows ?? []
-      const nextCounts = { ...counts }
-      const unmatched = []
-      let matched = 0
-      for (const row of rows) {
-        const user = matchUser(row.name)
-        if (user && row.count > 0) {
-          nextCounts[user.id] = Math.min(99, (nextCounts[user.id] || 0) + row.count)
-          matched++
-        } else if (row.count > 0) {
-          unmatched.push(row)
-        }
-      }
-      setCounts(nextCounts)
-      setParseInfo({ matched, unmatched, total: rows.length })
-    } catch (err) {
-      console.error(err)
-      setError(err.message || 'No se pudo procesar la captura.')
-    } finally {
-      setParsing(false)
-    }
-  }
 
   function changeLeague(l) {
     setLeague(l)
     setActionId(null)
     setCounts({})
     setDone(null)
-    setParseInfo(null)
   }
 
   function selectAction(id) {
@@ -140,7 +57,6 @@ export default function PanelPuntos() {
     setActionId(id)
     setCounts({})       // limpiar contadores: cada acción empieza de cero
     setDone(null)
-    setParseInfo(null)
     setError(null)
   }
 
@@ -304,57 +220,6 @@ export default function PanelPuntos() {
           ))}
         </div>
       </div>
-
-      {/* Subir captura del CRM */}
-      {action && (
-        <div className="flex items-center gap-3 bg-white dark:bg-rk-ink-card rounded-2xl px-4 py-3 border border-black/[0.04] dark:border-white/[0.05] shadow-soft">
-          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
-            {parsing ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-extrabold text-sm">
-              {parsing ? 'Leyendo la captura…' : 'Rellenar desde una captura del CRM'}
-            </div>
-            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
-              Sube la captura con los nombres y cantidades de "{action.label}". Los contadores se rellenan solos y tú revisas antes de registrar.
-            </div>
-          </div>
-          <label className={cn(
-            'px-4 py-2 rounded-xl text-xs font-extrabold cursor-pointer transition shrink-0',
-            parsing
-              ? 'bg-black/5 dark:bg-white/5 opacity-50 pointer-events-none'
-              : 'bg-rk-orange text-white shadow-orange-glow-sm hover:bg-rk-orange-dark'
-          )}>
-            Subir captura
-            <input type="file" accept="image/*" className="hidden" onChange={handleCapture} disabled={parsing} />
-          </label>
-        </div>
-      )}
-
-      {/* Resultado del análisis de la captura */}
-      {parseInfo && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-2xl px-4 py-2.5 font-bold text-sm">
-            <Check size={16} />
-            {parseInfo.matched} de {parseInfo.total} filas reconocidas y volcadas a los contadores. Revisa abajo antes de registrar.
-          </div>
-          {parseInfo.unmatched.length > 0 && (
-            <div className="bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-2xl px-4 py-2.5 text-sm">
-              <div className="flex items-center gap-2 font-bold mb-1">
-                <AlertTriangle size={15} />
-                {parseInfo.unmatched.length} {parseInfo.unmatched.length === 1 ? 'fila sin reconocer' : 'filas sin reconocer'} — ponlas a mano:
-              </div>
-              <div className="text-xs leading-relaxed">
-                {parseInfo.unmatched.map((r, i) => (
-                  <span key={i} className="inline-block mr-3">
-                    {r.name} ({r.count})
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Confirmación de carga completada */}
       {done && (
