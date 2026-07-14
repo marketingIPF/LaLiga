@@ -66,14 +66,23 @@ service cloud.firestore {
     // -------- ACTION REQUESTS --------
     match /actionRequests/{reqId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn()
-        && profileExists()
-        && request.resource.data.userId == myUid()
-        && request.resource.data.status == 'pending'
-        && request.resource.data.reviewedBy == null
-        && request.resource.data.points is int
-        && request.resource.data.points > 0
-        && request.resource.data.points <= 200;
+      allow create: if
+        // Usuarios: registran sus propias solicitudes (pendientes)
+        (isSignedIn()
+          && profileExists()
+          && request.resource.data.userId == myUid()
+          && request.resource.data.status == 'pending'
+          && request.resource.data.reviewedBy == null
+          && request.resource.data.points is int
+          && request.resource.data.points > 0
+          && request.resource.data.points <= 200)
+        // Admins: carga masiva desde el CRM (aprobadas, para cualquier usuario)
+        || (isAdmin()
+          && request.resource.data.status == 'approved'
+          && request.resource.data.reviewedBy == myUid()
+          && request.resource.data.points is int
+          && request.resource.data.points > 0
+          && request.resource.data.points <= 10000);
       allow update: if isAdmin()
         && resource.data.status == 'pending'
         && request.resource.data.status in ['approved', 'rejected']
