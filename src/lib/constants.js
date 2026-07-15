@@ -155,7 +155,7 @@ export const ACTION_TYPES = {
     id: 'liebres',
     label: 'Liebres',
     shortLabel: 'Liebres',
-    points: 50,
+    points: 125,
     icon: '🐇',
     description: 'Liebre aportada al equipo comercial.',
     leagues: ['staff'],
