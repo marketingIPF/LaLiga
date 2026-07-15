@@ -30,9 +30,11 @@ export default function PanelPuntos() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(null)
   const [error, setError] = useState(null)
+  const [mode, setMode] = useState('add') // 'add' | 'subtract'
 
   const actions = useMemo(() => actionsForLeague(league), [league])
   const action = actions.find((a) => a.id === actionId) ?? null
+  const isDirect = action?.directPoints === true
 
   const competitors = useMemo(
     () =>
@@ -50,6 +52,7 @@ export default function PanelPuntos() {
     setActionId(null)
     setCounts({})
     setDone(null)
+    setMode('add')
   }
 
   function selectAction(id) {
@@ -58,10 +61,12 @@ export default function PanelPuntos() {
     setCounts({})       // limpiar contadores: cada acción empieza de cero
     setDone(null)
     setError(null)
+    setMode('add')
   }
 
   function setCount(userId, value) {
-    const n = Math.max(0, Math.min(99, Number(value) || 0))
+    const cap = isDirect ? 9999 : 99
+    const n = Math.max(0, Math.min(cap, Number(value) || 0))
     setCounts((prev) => ({ ...prev, [userId]: n }))
   }
 
@@ -71,7 +76,10 @@ export default function PanelPuntos() {
 
   const entries = Object.entries(counts).filter(([, n]) => n > 0)
   const totalActions = entries.reduce((acc, [, n]) => acc + n, 0)
-  const totalPoints = action ? totalActions * action.points : 0
+  const sign = mode === 'subtract' ? -1 : 1
+  const totalPoints = action
+    ? sign * (isDirect ? totalActions : totalActions * action.points)
+    : 0
 
   async function handleSubmit() {
     if (!action || entries.length === 0) return
@@ -84,7 +92,18 @@ export default function PanelPuntos() {
       for (const [userId, n] of entries) {
         const user = userById[userId]
         if (!user) continue
-        const pts = action.points * n
+        // En acciones directas, n YA son los puntos. En normales, n × valor.
+        const magnitude = isDirect ? n : action.points * n
+        const pts = sign * magnitude
+
+        // Etiqueta legible para el histórico
+        let label
+        if (isDirect) {
+          label = action.label
+        } else {
+          label = n > 1 ? `${action.label} ×${n}` : action.label
+        }
+        if (mode === 'subtract') label = `Corrección: ${label}`
 
         // 1 solicitud aprobada (queda en el histórico auditable)
         const reqRef = doc(collection(db, COL.actionRequests))
@@ -94,9 +113,11 @@ export default function PanelPuntos() {
           userEmail: user.email ?? '',
           groupId: user.groupId ?? null,
           actionType: action.id,
-          actionLabel: n > 1 ? `${action.label} ×${n}` : action.label,
+          actionLabel: label,
           points: pts,
-          notes: 'Carga desde CRM (panel admin)',
+          notes: mode === 'subtract'
+            ? 'Corrección de puntos (panel admin)'
+            : 'Carga desde CRM (panel admin)',
           status: 'approved',
           createdAt: serverTimestamp(),
           reviewedAt: serverTimestamp(),
@@ -104,14 +125,14 @@ export default function PanelPuntos() {
           reviewNote: '',
         })
 
-        // Sumar puntos al usuario
+        // Aplicar puntos al usuario (pts ya lleva signo)
         batch.update(doc(db, COL.users, userId), {
           points: increment(pts),
           lifetimePoints: increment(pts),
           lastActionAt: serverTimestamp(),
         })
 
-        // Sumar al equipo si tiene
+        // Aplicar al equipo si tiene
         if (user.groupId) {
           batch.update(doc(db, COL.groups, user.groupId), {
             totalPoints: increment(pts),
@@ -119,12 +140,13 @@ export default function PanelPuntos() {
         }
 
         // Notificación al usuario
+        const signedLabel = pts >= 0 ? `+${pts}` : `${pts}`
         const notifRef = doc(collection(db, COL.notifications))
         batch.set(notifRef, {
           userId,
           type: 'action_approved',
-          title: '✅ Puntos registrados',
-          message: `${action.label}${n > 1 ? ` ×${n}` : ''} · +${pts} pts`,
+          title: mode === 'subtract' ? '➖ Corrección de puntos' : '✅ Puntos registrados',
+          message: `${action.label} · ${signedLabel} pts`,
           link: '/',
           read: false,
           createdAt: serverTimestamp(),
@@ -133,7 +155,7 @@ export default function PanelPuntos() {
       }
 
       await batch.commit()
-      setDone({ people: entries.length, points: totalPoints, actionLabel: action.label })
+      setDone({ people: entries.length, points: totalPoints, actionLabel: action.label, mode })
       setCounts({})
     } catch (e) {
       console.error(e)
@@ -221,12 +243,55 @@ export default function PanelPuntos() {
         </div>
       </div>
 
+      {/* Modo sumar / restar */}
+      {action && (
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50 w-16">
+            MODO
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setMode('add')}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-extrabold transition',
+                mode === 'add'
+                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
+                  : 'bg-white dark:bg-rk-ink-card border border-black/[0.04] dark:border-white/[0.05]'
+              )}
+            >
+              <Plus size={14} /> Sumar
+            </button>
+            <button
+              onClick={() => setMode('subtract')}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-extrabold transition',
+                mode === 'subtract'
+                  ? 'bg-red-500 text-white shadow-md shadow-red-500/25'
+                  : 'bg-white dark:bg-rk-ink-card border border-black/[0.04] dark:border-white/[0.05]'
+              )}
+            >
+              <Minus size={14} /> Restar
+            </button>
+          </div>
+          {mode === 'subtract' && (
+            <span className="text-xs font-bold text-red-500">
+              Los puntos que introduzcas se RESTARÁN a cada persona.
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Confirmación de carga completada */}
       {done && (
-        <div className="flex items-center gap-3 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-2xl px-4 py-3 font-bold text-sm">
+        <div className={cn(
+          'flex items-center gap-3 rounded-2xl px-4 py-3 font-bold text-sm',
+          done.mode === 'subtract'
+            ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+            : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+        )}>
           <Check size={18} />
-          Cargado: {done.actionLabel} para {done.people}{' '}
-          {done.people === 1 ? 'persona' : 'personas'} · +
+          {done.mode === 'subtract' ? 'Restado' : 'Cargado'}: {done.actionLabel} para {done.people}{' '}
+          {done.people === 1 ? 'persona' : 'personas'} · {done.points >= 0 ? '+' : ''}
           {formatPoints(done.points)} pts en total
         </div>
       )}
@@ -245,7 +310,7 @@ export default function PanelPuntos() {
               <div />
               <div>NOMBRE</div>
               <div>ROL</div>
-              <div className="text-center">Nº DE VECES</div>
+              <div className="text-center">{isDirect ? 'PUNTOS' : 'Nº DE VECES'}</div>
             </div>
             <div className="divide-y divide-black/[0.04] dark:divide-white/[0.05]">
               {competitors.map((u) => {
@@ -255,7 +320,7 @@ export default function PanelPuntos() {
                     key={u.id}
                     className={cn(
                       'grid grid-cols-[44px_1.6fr_1fr_180px] gap-3 px-5 py-2.5 items-center',
-                      n > 0 && 'bg-rk-orange/[0.04]'
+                      n > 0 && (mode === 'subtract' ? 'bg-red-500/[0.04]' : 'bg-rk-orange/[0.04]')
                     )}
                   >
                     <Avatar name={u.name} size="sm" />
@@ -274,13 +339,17 @@ export default function PanelPuntos() {
                       <input
                         type="number"
                         min="0"
-                        max="99"
+                        max={isDirect ? 9999 : 99}
                         value={n === 0 ? '' : n}
                         placeholder="0"
                         onChange={(e) => setCount(u.id, e.target.value)}
                         className={cn(
-                          'w-14 text-center py-1.5 rounded-lg font-black text-sm bg-black/5 dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-rk-orange',
-                          n > 0 && 'bg-rk-orange/10 text-rk-orange'
+                          'text-center py-1.5 rounded-lg font-black text-sm bg-black/5 dark:bg-white/5 focus:outline-none focus:ring-2',
+                          isDirect ? 'w-20' : 'w-14',
+                          mode === 'subtract' ? 'focus:ring-red-500' : 'focus:ring-rk-orange',
+                          n > 0 && (mode === 'subtract'
+                            ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                            : 'bg-rk-orange/10 text-rk-orange')
                         )}
                       />
                       <button
@@ -302,16 +371,23 @@ export default function PanelPuntos() {
             <div className="flex-1 text-sm">
               {entries.length === 0 ? (
                 <span className="opacity-70">
-                  Pon el nº de veces que cada persona ha hecho "{action.label}"
+                  {isDirect
+                    ? `Pon los puntos de "${action.label}" para cada persona`
+                    : `Pon el nº de veces que cada persona ha hecho "${action.label}"`}
                 </span>
               ) : (
                 <span>
                   <strong>{entries.length}</strong>{' '}
-                  {entries.length === 1 ? 'persona' : 'personas'} ·{' '}
-                  <strong>{totalActions}</strong>{' '}
-                  {totalActions === 1 ? 'acción' : 'acciones'} ·{' '}
-                  <strong className="text-rk-orange">
-                    +{formatPoints(totalPoints)} pts
+                  {entries.length === 1 ? 'persona' : 'personas'}
+                  {!isDirect && (
+                    <>
+                      {' '}· <strong>{totalActions}</strong>{' '}
+                      {totalActions === 1 ? 'acción' : 'acciones'}
+                    </>
+                  )}
+                  {' '}·{' '}
+                  <strong className={mode === 'subtract' ? 'text-red-400' : 'text-rk-orange'}>
+                    {totalPoints >= 0 ? '+' : ''}{formatPoints(totalPoints)} pts
                   </strong>
                 </span>
               )}
@@ -319,9 +395,14 @@ export default function PanelPuntos() {
             <button
               onClick={handleSubmit}
               disabled={entries.length === 0 || submitting}
-              className="px-6 py-2.5 bg-rk-orange text-white font-extrabold text-sm rounded-xl shadow-orange-glow-sm hover:bg-rk-orange-dark transition disabled:opacity-40"
+              className={cn(
+                'px-6 py-2.5 text-white font-extrabold text-sm rounded-xl transition disabled:opacity-40',
+                mode === 'subtract'
+                  ? 'bg-red-500 hover:bg-red-600 shadow-md shadow-red-500/25'
+                  : 'bg-rk-orange hover:bg-rk-orange-dark shadow-orange-glow-sm'
+              )}
             >
-              {submitting ? 'Cargando…' : 'Registrar puntos'}
+              {submitting ? 'Procesando…' : (mode === 'subtract' ? 'Restar puntos' : 'Registrar puntos')}
             </button>
           </div>
         </>
@@ -332,9 +413,9 @@ export default function PanelPuntos() {
           </div>
           <h3 className="text-lg font-black mb-1">Elige una acción</h3>
           <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60 max-w-md mx-auto">
-            Selecciona arriba la acción del CRM que quieres volcar, y pon
-            cuántas veces la ha hecho cada persona. Todo se registra de una
-            sola vez.
+            Selecciona arriba la acción que quieres cargar. En las sumas
+            totales (toques, entrevistas) se teclea el total de puntos; en
+            el resto, el nº de veces. Puedes sumar o restar.
           </p>
         </div>
       )}
