@@ -76,13 +76,16 @@ service cloud.firestore {
           && request.resource.data.points is int
           && request.resource.data.points > 0
           && request.resource.data.points <= 200)
-        // Admins: carga masiva desde el CRM (aprobadas, para cualquier usuario)
+        // Admins: carga masiva y correcciones desde el panel (aprobadas,
+        // para cualquier usuario). Se permiten puntos negativos para restar,
+        // dentro de un rango razonable.
         || (isAdmin()
           && request.resource.data.status == 'approved'
           && request.resource.data.reviewedBy == myUid()
           && request.resource.data.points is int
-          && request.resource.data.points > 0
-          && request.resource.data.points <= 10000);
+          && request.resource.data.points >= -10000
+          && request.resource.data.points <= 10000
+          && request.resource.data.points != 0);
       allow update: if isAdmin()
         && resource.data.status == 'pending'
         && request.resource.data.status in ['approved', 'rejected']
