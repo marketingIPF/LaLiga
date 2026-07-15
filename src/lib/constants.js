@@ -176,16 +176,7 @@ export const ACTION_TYPES = {
     leagues: ['agentes'],
     selfService: [],
   },
-  suma_entrevistas: {
-    id: 'suma_entrevistas',
-    label: 'Suma total de entrevistas',
-    shortLabel: 'Entrevistas',
-    directPoints: true,
-    icon: '🎯',
-    description: 'Suma de entrevistas M1, M2 y M3. Se introduce el total de puntos.',
-    leagues: ['agentes'],
-    selfService: [],
-  },
+  
 }
 
 export const ACTION_LIST = Object.values(ACTION_TYPES)
