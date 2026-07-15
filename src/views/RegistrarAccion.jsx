@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, ArrowLeft } from 'lucide-react'
+import { Check, ArrowLeft, Paperclip } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { ACTION_TYPES, selfServiceActions } from '../lib/constants'
 import { getUserLeague } from '../data/seedUsers'
 import { submitActionRequest } from '../hooks/useActionRequests'
 import { cn } from '../lib/utils'
 import GlassCard from '../components/ui/GlassCard'
+
+// Acciones que exigen enviar una prueba (captura/documento) a un admin
+const REQUIRES_PROOF = ['formacion', 'publicar_rrss']
 
 export default function RegistrarAccion() {
   const { profile } = useAuth()
@@ -21,6 +24,7 @@ export default function RegistrarAccion() {
     return tipo && ACTION_TYPES[tipo] ? new Set([tipo]) : new Set()
   })
   const [notes, setNotes] = useState('')
+  const [proofConfirmed, setProofConfirmed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [sentCount, setSentCount] = useState(0)
@@ -52,6 +56,14 @@ export default function RegistrarAccion() {
   const totalPoints = selectedActions.reduce((acc, a) => acc + a.points, 0)
   const count = selectedActions.length
 
+  // ¿Alguna acción seleccionada exige prueba?
+  const needsProof = selectedActions.some((a) => REQUIRES_PROOF.includes(a.id))
+
+  // Si dejan de estar seleccionadas las que piden prueba, reseteamos la casilla
+  useEffect(() => {
+    if (!needsProof && proofConfirmed) setProofConfirmed(false)
+  }, [needsProof, proofConfirmed])
+
   const handleSubmit = async () => {
     if (count === 0) {
       setError('Selecciona al menos una acción.')
@@ -60,6 +72,10 @@ export default function RegistrarAccion() {
     const needsEvidence = selectedActions.some((a) => a.requiresEvidence)
     if (needsEvidence && notes.trim().length < 10) {
       setError('Para Formación/Entrenamiento, describe en las notas el resultado de tu entrenamiento (mínimo unas palabras).')
+      return
+    }
+    if (needsProof && !proofConfirmed) {
+      setError('Confirma que has enviado la captura o el documento a Rober o Almudena.')
       return
     }
     setSubmitting(true)
@@ -159,6 +175,46 @@ export default function RegistrarAccion() {
         })}
       </div>
 
+      {/* Aviso de prueba obligatoria */}
+      {needsProof && (
+        <div className="rounded-2xl bg-rk-orange/10 ring-1 ring-rk-orange/30 p-4 space-y-3">
+          <div className="flex gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rk-orange/20 text-rk-orange flex items-center justify-center shrink-0">
+              <Paperclip size={17} />
+            </div>
+            <div className="text-sm text-rk-ink/80 dark:text-rk-cream/80 leading-relaxed">
+              <span className="font-bold">Tienes que demostrarlo.</span> Envía la
+              captura o el documento a <span className="font-bold">Rober</span> o{' '}
+              <span className="font-bold">Almudena</span> por Slack o WhatsApp.
+              Sin la prueba no se validan los puntos.
+            </div>
+          </div>
+          <button
+            onClick={() => setProofConfirmed((v) => !v)}
+            className={cn(
+              'w-full flex items-center gap-2.5 p-3 rounded-xl text-left text-sm font-bold transition-all active:scale-[0.98]',
+              proofConfirmed
+                ? 'bg-rk-orange text-white'
+                : 'bg-white dark:bg-rk-ink-card ring-1 ring-rk-orange/30'
+            )}
+          >
+            <div
+              className={cn(
+                'w-5 h-5 rounded-md flex items-center justify-center shrink-0',
+                proofConfirmed
+                  ? 'bg-white'
+                  : 'border-2 border-rk-orange/40'
+              )}
+            >
+              {proofConfirmed && (
+                <Check size={13} strokeWidth={3} className="text-rk-orange" />
+              )}
+            </div>
+            Ya he enviado la prueba a Rober o Almudena
+          </button>
+        </div>
+      )}
+
       <GlassCard>
         <label className="block text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 mb-2">
           {selectedActions.some((a) => a.requiresEvidence) ? 'Notas · resultado del entrenamiento (obligatorio)' : 'Notas (opcional)'}
@@ -184,7 +240,7 @@ export default function RegistrarAccion() {
 
       <button
         onClick={handleSubmit}
-        disabled={count === 0 || submitting}
+        disabled={count === 0 || submitting || (needsProof && !proofConfirmed)}
         className="btn-primary w-full py-4 text-base"
       >
         {submitting
