@@ -38,7 +38,7 @@ export const ACTION_TYPES = {
   },
   win_win: {
     id: 'win_win',
-    label: 'Win Win',
+    label: 'Win Win (con contrato firmado)',
     shortLabel: 'Win Win',
     points: 10,
     icon: '🤝',
@@ -96,15 +96,40 @@ export const ACTION_TYPES = {
     leagues: ['agentes'],
     selfService: [],
   },
-  resena_google_maps: {
-    id: 'resena_google_maps',
-    label: 'Reseña en Google Maps',
-    shortLabel: 'G. Maps',
+  resena_google: {
+    id: 'resena_google',
+    label: 'Reseña en Google',
+    shortLabel: 'Google',
     points: 5,
     icon: '🗺️',
-    description: 'Reseña conseguida en Google Maps.',
+    description: 'Reseña conseguida en Google.',
     leagues: ['agentes', 'staff'],
     selfService: ['staff'],
+  },
+
+  // ------------------ SUMAS DIRECTAS (liga agentes) ------------------
+  // directPoints: el admin teclea el TOTAL de puntos, no un nº de veces.
+  suma_toques: {
+    id: 'suma_toques',
+    label: 'Suma total de toques',
+    shortLabel: 'Toques',
+    points: 1,
+    directPoints: true,
+    icon: '👊',
+    description: 'Suma de llamadas de cortesía, prospección, Win Win y comercio aliado. Se introduce el total de puntos.',
+    leagues: ['agentes'],
+    selfService: [],
+  },
+  suma_entrevistas: {
+    id: 'suma_entrevistas',
+    label: 'Suma total de entrevistas',
+    shortLabel: 'Entrevistas',
+    points: 1,
+    directPoints: true,
+    icon: '🎯',
+    description: 'Suma de entrevistas M1, M2 y M3. Se introduce el total de puntos.',
+    leagues: ['agentes'],
+    selfService: [],
   },
 
   // ------------------ AUTOSERVICIO AGENTES ------------------
@@ -155,7 +180,7 @@ export const ACTION_TYPES = {
     id: 'liebres',
     label: 'Liebres',
     shortLabel: 'Liebres',
-    points: 10,
+    points: 50,
     icon: '🐇',
     description: 'Liebre aportada al equipo comercial.',
     leagues: ['staff'],
