@@ -107,31 +107,6 @@ export const ACTION_TYPES = {
     selfService: ['staff'],
   },
 
-  // ------------------ SUMAS DIRECTAS (liga agentes) ------------------
-  // directPoints: el admin teclea el TOTAL de puntos, no un nº de veces.
-  suma_toques: {
-    id: 'suma_toques',
-    label: 'Suma total de toques',
-    shortLabel: 'Toques',
-    points: 1,
-    directPoints: true,
-    icon: '👊',
-    description: 'Suma de llamadas de cortesía, prospección, Win Win y comercio aliado. Se introduce el total de puntos.',
-    leagues: ['agentes'],
-    selfService: [],
-  },
-  suma_entrevistas: {
-    id: 'suma_entrevistas',
-    label: 'Suma total de entrevistas',
-    shortLabel: 'Entrevistas',
-    points: 1,
-    directPoints: true,
-    icon: '🎯',
-    description: 'Suma de entrevistas M1, M2 y M3. Se introduce el total de puntos.',
-    leagues: ['agentes'],
-    selfService: [],
-  },
-
   // ------------------ AUTOSERVICIO AGENTES ------------------
   publicar_rrss: {
     id: 'publicar_rrss',
@@ -185,6 +160,31 @@ export const ACTION_TYPES = {
     description: 'Liebre aportada al equipo comercial.',
     leagues: ['staff'],
     selfService: ['staff'],
+  },
+
+  // ------------------ SUMAS DIRECTAS (liga agentes) ------------------
+  // Al final a propósito: son las más usadas por administración.
+  // directPoints: el admin teclea el TOTAL de puntos, no un nº de veces.
+  // Sin `points`: el botón no muestra ningún valor unitario.
+  suma_toques: {
+    id: 'suma_toques',
+    label: 'Suma total de toques',
+    shortLabel: 'Toques',
+    directPoints: true,
+    icon: '👊',
+    description: 'Suma de llamadas de cortesía, prospección, Win Win y comercio aliado. Se introduce el total de puntos.',
+    leagues: ['agentes'],
+    selfService: [],
+  },
+  suma_entrevistas: {
+    id: 'suma_entrevistas',
+    label: 'Suma total de entrevistas',
+    shortLabel: 'Entrevistas',
+    directPoints: true,
+    icon: '🎯',
+    description: 'Suma de entrevistas M1, M2 y M3. Se introduce el total de puntos.',
+    leagues: ['agentes'],
+    selfService: [],
   },
 }
 
