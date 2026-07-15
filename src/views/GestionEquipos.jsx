@@ -37,7 +37,7 @@ export default function GestionEquipos() {
 
   if (!isAdmin) return null
 
-  const agents = users.filter((u) => !isAdminRole(u.role))
+  const agents = users.filter(isCompetitor)
   const unassigned = agents.filter((a) => !a.groupId)
 
   if (selectedGroupId) {
