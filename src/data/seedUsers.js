@@ -31,7 +31,7 @@ export const SEED_USERS = [
 ]
 
 
-// Staff + Obra Nueva — compiten en la liga 'staff'.
+// Staff y Obra Nueva — ligas separadas ('staff' y 'obranueva').
 // Contraseña inicial = teléfono (forzado cambio en primer login).
 export const SEED_STAFF = [
   { id: '687795185', name: 'Mar Moscardó', role: 'Staff', league: 'staff', email: 'mar@inmobiliariapalanca.com', phone: '687795185' },
@@ -39,12 +39,13 @@ export const SEED_STAFF = [
   { id: '662658360', name: 'Mireia Sáez', role: 'Staff', league: 'staff', email: 'msaez@inmobiliariapalanca.com', phone: '662658360' },
   { id: '620873588', name: 'Verónica Fortea', role: 'Staff', league: 'staff', email: 'vfortea@inmobiliariapalanca.com', phone: '620873588' },
   { id: '662658311', name: 'Marivi Gil', role: 'Staff', league: 'staff', email: 'postventa@inmobiliariapalanca.com', phone: '662658311' },
-  { id: '661654156', name: 'Ros Aguilar', role: 'Obra Nueva', league: 'staff', email: 'obranueva@inmobiliariapalanca.com', phone: '661654156' },
-  { id: '644717355', name: 'Inma Frasquet', role: 'Obra Nueva', league: 'staff', email: 'inma@inmobiliariapalanca.com', phone: '644717355' },
-  { id: '656615987', name: 'Carles Navarro', role: 'Obra Nueva', league: 'staff', email: 'carles@inmobiliariapalanca.com', phone: '656615987' },
-  { id: '687426435', name: 'Alicia Barberá', role: 'Obra Nueva', league: 'staff', email: 'abarbera@inmobiliariapalanca.com', phone: '687426435' },
-  { id: '613842777', name: 'Jose Manuel Lafuente', role: 'Obra Nueva', league: 'staff', email: 'jmlafuente@inmobiliariapalanca.com', phone: '613842777' },
-  { id: '685977889', name: 'Jose González', role: 'Obra Nueva', league: 'staff', email: 'gonzalez@inmobiliariapalanca.com', phone: '685977889' },
+  { id: '621022064', name: 'Pedro Carrillo', role: 'Staff', league: 'staff', email: 'facturacion@inmobiliariapalanca.com', phone: '621022064' },
+  { id: '661654156', name: 'Ros Aguilar', role: 'Obra Nueva', league: 'obranueva', email: 'obranueva@inmobiliariapalanca.com', phone: '661654156' },
+  { id: '644717355', name: 'Inma Frasquet', role: 'Obra Nueva', league: 'obranueva', email: 'inma@inmobiliariapalanca.com', phone: '644717355' },
+  { id: '656615987', name: 'Carles Navarro', role: 'Obra Nueva', league: 'obranueva', email: 'carles@inmobiliariapalanca.com', phone: '656615987' },
+  { id: '687426435', name: 'Alicia Barberá', role: 'Obra Nueva', league: 'obranueva', email: 'abarbera@inmobiliariapalanca.com', phone: '687426435' },
+  { id: '613842777', name: 'Jose Manuel Lafuente', role: 'Obra Nueva', league: 'obranueva', email: 'jmlafuente@inmobiliariapalanca.com', phone: '613842777' },
+  { id: '685977889', name: 'Jose González', role: 'Obra Nueva', league: 'obranueva', email: 'gonzalez@inmobiliariapalanca.com', phone: '685977889' },
 ]
 
 /**
@@ -69,14 +70,16 @@ export function isAdminRole(role) {
 }
 
 /**
- * Liga de un usuario. Los agentes antiguos sin campo league se
- * consideran 'agentes'. Los admins sin liga no compiten (null).
+ * Liga de un usuario. Prioriza el campo `league`. Si no existe, se deduce
+ * del rol (compatibilidad con datos antiguos). Los codirectores puros
+ * (sin league) no compiten.
  */
 export function getUserLeague(user) {
   if (!user) return null
   if (user.league) return user.league
   if (user.role === 'Agente Comercial') return 'agentes'
-  if (user.role === 'Staff' || user.role === 'Obra Nueva') return 'staff'
+  if (user.role === 'Obra Nueva') return 'obranueva'
+  if (user.role === 'Staff') return 'staff'
   return null
 }
 
