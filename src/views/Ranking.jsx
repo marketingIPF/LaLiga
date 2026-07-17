@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Trophy, Users, User, Briefcase } from 'lucide-react'
+import { Trophy, Users, User, Briefcase, Building2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
@@ -13,34 +13,32 @@ import { computeRank } from '../lib/constants'
 
 const TABS = [
   { id: 'agentes', label: 'Agentes', Icon: User },
-  { id: 'staff', label: 'Staff & ON', Icon: Briefcase },
+  { id: 'obranueva', label: 'Obra Nueva', Icon: Building2 },
+  { id: 'staff', label: 'Staff', Icon: Briefcase },
   { id: 'equipos', label: 'Equipos', Icon: Users },
 ]
+
+// Ligas individuales (todas menos 'equipos')
+const LEAGUE_TABS = ['agentes', 'obranueva', 'staff']
 
 export default function Ranking() {
   const { profile } = useAuth()
   const { users, topLifetime } = useUsers()
   const { groups } = useGroups()
 
-  // Pestaña inicial: la liga del propio usuario
+  // Pestaña inicial: la liga del propio usuario, si es una liga individual
   const myLeague = getUserLeague(profile)
-  const [tab, setTab] = useState(myLeague === 'staff' ? 'staff' : 'agentes')
-
-  const agentsByPoints = useMemo(
-    () =>
-      users
-        .filter((u) => getUserLeague(u) === 'agentes')
-        .sort((a, b) => (b.points ?? 0) - (a.points ?? 0)),
-    [users]
+  const [tab, setTab] = useState(
+    LEAGUE_TABS.includes(myLeague) ? myLeague : 'agentes'
   )
 
-  const staffByPoints = useMemo(
-    () =>
-      users
-        .filter((u) => getUserLeague(u) === 'staff')
-        .sort((a, b) => (b.points ?? 0) - (a.points ?? 0)),
-    [users]
-  )
+  // Ranking individual de la liga activa (memoizado por liga)
+  const leagueBoard = useMemo(() => {
+    if (!LEAGUE_TABS.includes(tab)) return []
+    return users
+      .filter((u) => getUserLeague(u) === tab)
+      .sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+  }, [users, tab])
 
   const groupsByPoints = useMemo(
     () => [...groups].sort((a, b) => (b.totalPoints ?? 0) - (a.totalPoints ?? 0)),
@@ -64,22 +62,16 @@ export default function Ranking() {
         ))}
       </div>
 
-      {tab === 'agentes' && (
+      {tab === 'equipos' ? (
+        <GroupsLeaderboard groups={groupsByPoints} />
+      ) : (
         <IndividualLeaderboard
-          competitors={agentsByPoints}
+          competitors={leagueBoard}
           topLifetime={topLifetime}
           myId={profile?.id}
+          showRole={tab !== 'agentes'}
         />
       )}
-      {tab === 'staff' && (
-        <IndividualLeaderboard
-          competitors={staffByPoints}
-          topLifetime={topLifetime}
-          myId={profile?.id}
-          showRole
-        />
-      )}
-      {tab === 'equipos' && <GroupsLeaderboard groups={groupsByPoints} />}
     </div>
   )
 }
@@ -89,13 +81,13 @@ function ToggleTab({ active, onClick, Icon, label }) {
     <button
       onClick={onClick}
       className={cn(
-        'flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all',
+        'flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl font-semibold text-[11px] transition-all',
         active
           ? 'bg-rk-orange text-white shadow-md shadow-rk-orange/20'
           : 'text-rk-ink/60 dark:text-rk-cream/60'
       )}
     >
-      <Icon size={14} />
+      <Icon size={15} />
       {label}
     </button>
   )
