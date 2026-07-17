@@ -50,11 +50,17 @@ export default function Panel() {
     [users]
   )
 
+  const obraNuevaLeague = useMemo(
+    () => users.filter((u) => getUserLeague(u) === 'obranueva'),
+    [users]
+  )
+
   const totals = useMemo(() => {
     const points = agents.reduce((acc, u) => acc + (u.points || 0), 0)
     const staffPoints = staffLeague.reduce((acc, u) => acc + (u.points || 0), 0)
-    return { points, staffPoints }
-  }, [agents, staffLeague])
+    const obraNuevaPoints = obraNuevaLeague.reduce((acc, u) => acc + (u.points || 0), 0)
+    return { points, staffPoints, obraNuevaPoints }
+  }, [agents, staffLeague, obraNuevaLeague])
 
   const weekDeltas = useMemo(() => {
     const cutoff = Date.now() - 7 * 24 * 3600 * 1000
@@ -84,6 +90,14 @@ export default function Panel() {
         .sort((a, b) => (b.points || 0) - (a.points || 0))
         .slice(0, 3),
     [staffLeague]
+  )
+
+  const top3ObraNueva = useMemo(
+    () =>
+      [...obraNuevaLeague]
+        .sort((a, b) => (b.points || 0) - (a.points || 0))
+        .slice(0, 3),
+    [obraNuevaLeague]
   )
 
   const teams = useMemo(
@@ -167,7 +181,7 @@ export default function Panel() {
       </header>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         <KpiCard
           label="AGENTES ACTIVOS"
           value={agents.length}
@@ -184,9 +198,14 @@ export default function Panel() {
           subUp={weekDeltas.points > 0}
         />
         <KpiCard
-          label="PUNTOS STAFF & OBRA NUEVA"
+          label="PUNTOS STAFF"
           value={formatPoints(totals.staffPoints)}
           sub={`${staffLeague.length} participantes`}
+        />
+        <KpiCard
+          label="PUNTOS OBRA NUEVA"
+          value={formatPoints(totals.obraNuevaPoints)}
+          sub={`${obraNuevaLeague.length} participantes`}
         />
         <KpiCard
           label="PENDIENTES DE APROBAR"
@@ -202,7 +221,8 @@ export default function Panel() {
 
         <div className="flex flex-col gap-4">
           <RankingMini competitors={top5} tag="EL BOLETÍN" title="Top 5 · Agentes" />
-          <RankingMini competitors={top3Staff} tag="EL BOLETÍN" title="Top 3 · Staff & ON" />
+          <RankingMini competitors={top3ObraNueva} tag="EL BOLETÍN" title="Top 3 · Obra Nueva" />
+          <RankingMini competitors={top3Staff} tag="EL BOLETÍN" title="Top 3 · Staff" />
           <TeamsChart teams={teams} maxPts={maxTeamPts} />
         </div>
       </div>
