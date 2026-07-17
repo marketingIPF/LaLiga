@@ -1,17 +1,19 @@
 // ====================================================================
 // La Liga · Sistema de puntos y rangos (RK Palanca Fontestad)
 // --------------------------------------------------------------------
-// v2 · Rediseño de gerencia:
-//  - Dos ligas: 'agentes' (Agentes Comerciales) y 'staff' (Staff + Obra Nueva)
-//  - Cada acción declara en qué ligas puntúa (leagues) y en cuáles
-//    puede solicitarla el propio usuario (selfService). El resto de
-//    puntos los carga un admin desde el panel (datos del CRM).
-//  - La facturación desaparece de la app.
+// v3 · Ligas separadas:
+//  - 'agentes'    → Agentes Comerciales
+//  - 'obranueva'  → equipo de Obra Nueva
+//  - 'staff'      → Administración / Staff
+//  Cada acción declara en qué ligas puntúa (leagues) y en cuáles puede
+//  solicitarla el propio usuario (selfService). El resto de puntos los
+//  carga un admin desde el panel (datos del CRM).
 // ====================================================================
 
 export const LEAGUES = {
   agentes: { id: 'agentes', label: 'Agentes' },
-  staff: { id: 'staff', label: 'Staff & Obra Nueva' },
+  obranueva: { id: 'obranueva', label: 'Obra Nueva' },
+  staff: { id: 'staff', label: 'Staff' },
 }
 
 export const ACTION_TYPES = {
@@ -43,8 +45,8 @@ export const ACTION_TYPES = {
     points: 10,
     icon: '🤝',
     description: 'Colaboración Win Win con contrato firmado.',
-    leagues: ['agentes', 'staff'],
-    selfService: ['staff'],
+    leagues: ['agentes', 'obranueva', 'staff'],
+    selfService: ['obranueva', 'staff'],
   },
   comercio_aliado: {
     id: 'comercio_aliado',
@@ -53,8 +55,8 @@ export const ACTION_TYPES = {
     points: 10,
     icon: '🏪',
     description: 'Nuevo comercio aliado incorporado.',
-    leagues: ['agentes', 'staff'],
-    selfService: ['staff'],
+    leagues: ['agentes', 'obranueva', 'staff'],
+    selfService: ['obranueva', 'staff'],
   },
   entrevista_m1: {
     id: 'entrevista_m1',
@@ -103,8 +105,40 @@ export const ACTION_TYPES = {
     points: 5,
     icon: '🗺️',
     description: 'Reseña conseguida en Google.',
-    leagues: ['agentes', 'staff'],
-    selfService: ['staff'],
+    leagues: ['agentes', 'obranueva', 'staff'],
+    selfService: ['obranueva', 'staff'],
+  },
+
+  // ------------------ CAPTACIONES OBRA NUEVA (carga admin) ------------------
+  captacion_m1: {
+    id: 'captacion_m1',
+    label: 'Captación M1',
+    shortLabel: 'Capt. M1',
+    points: 50,
+    icon: '🏗️',
+    description: 'Captación M1 completada.',
+    leagues: ['obranueva'],
+    selfService: [],
+  },
+  captacion_m2: {
+    id: 'captacion_m2',
+    label: 'Captación M2',
+    shortLabel: 'Capt. M2',
+    points: 75,
+    icon: '🏗️',
+    description: 'Captación M2 completada.',
+    leagues: ['obranueva', 'staff'],
+    selfService: [],
+  },
+  captacion_m3: {
+    id: 'captacion_m3',
+    label: 'Captación M3',
+    shortLabel: 'Capt. M3',
+    points: 125,
+    icon: '🏗️',
+    description: 'Captación M3 completada.',
+    leagues: ['obranueva', 'staff'],
+    selfService: [],
   },
 
   // ------------------ AUTOSERVICIO AGENTES ------------------
@@ -125,8 +159,8 @@ export const ACTION_TYPES = {
     points: 10,
     icon: '🎬',
     description: 'Has grabado contenido para un Reel de la agencia.',
-    leagues: ['agentes', 'staff'],
-    selfService: ['agentes', 'staff'],
+    leagues: ['agentes', 'obranueva', 'staff'],
+    selfService: ['agentes', 'obranueva', 'staff'],
   },
   formacion: {
     id: 'formacion',
@@ -150,22 +184,9 @@ export const ACTION_TYPES = {
     selfService: ['agentes'],
   },
 
-  // ------------------ SOLO LIGA STAFF ------------------
-  liebres: {
-    id: 'liebres',
-    label: 'Liebres',
-    shortLabel: 'Liebres',
-    points: 125,
-    icon: '🐇',
-    description: 'Liebre aportada al equipo comercial.',
-    leagues: ['staff'],
-    selfService: ['staff'],
-  },
-
   // ------------------ SUMAS DIRECTAS (liga agentes) ------------------
   // Al final a propósito: son las más usadas por administración.
   // directPoints: el admin teclea el TOTAL de puntos, no un nº de veces.
-  // Sin `points`: el botón no muestra ningún valor unitario.
   suma_toques: {
     id: 'suma_toques',
     label: 'Suma total de toques',
@@ -176,7 +197,6 @@ export const ACTION_TYPES = {
     leagues: ['agentes'],
     selfService: [],
   },
-  
 }
 
 export const ACTION_LIST = Object.values(ACTION_TYPES)
@@ -198,12 +218,6 @@ export function selfServiceActions(league) {
 // --------------------------------------------------------------------
 // Rangos
 // --------------------------------------------------------------------
-// Prospectador → entry level (0-149)
-// Consolidado  → 150-399
-// Sénior       → 400-799
-// Élite        → 800+
-// Embajador    → reservado al líder histórico de la agencia (lifetime top, ≥1000)
-
 export const RANKS = {
   prospectador: {
     id: 'prospectador',
@@ -264,7 +278,6 @@ export const RANK_ORDER = ['prospectador', 'consolidado', 'senior', 'elite']
  * Embajador se otorga al líder histórico de la agencia (mayor lifetimePoints).
  */
 export function computeRank({ points = 0, lifetimePoints = 0, topLifetimeInAgency = 0 }) {
-  // Embajador: el agente con más puntos históricos (si supera el umbral mínimo)
   if (
     lifetimePoints > 0 &&
     lifetimePoints >= topLifetimeInAgency &&
