@@ -40,6 +40,8 @@ export const SEED_STAFF = [
   { id: '620873588', name: 'Verónica Fortea', role: 'Staff', league: 'staff', email: 'vfortea@inmobiliariapalanca.com', phone: '620873588' },
   { id: '662658311', name: 'Marivi Gil', role: 'Staff', league: 'staff', email: 'postventa@inmobiliariapalanca.com', phone: '662658311' },
   { id: '621022064', name: 'Pedro Carrillo', role: 'Staff', league: 'staff', email: 'facturacion@inmobiliariapalanca.com', phone: '621022064' },
+  { id: 'staff-alex', name: 'Alex Moreno', role: 'Staff', league: 'staff', email: 'info@inmobiliariapalanca.com', phone: '' },
+  { id: '653569847', name: 'Andrea Máñez', role: 'Staff', league: 'staff', email: 'andrea@inmobiliariapalanca.com', phone: '653569847' },
   { id: '661654156', name: 'Ros Aguilar', role: 'Obra Nueva', league: 'obranueva', email: 'obranueva@inmobiliariapalanca.com', phone: '661654156' },
   { id: '644717355', name: 'Inma Frasquet', role: 'Obra Nueva', league: 'obranueva', email: 'inma@inmobiliariapalanca.com', phone: '644717355' },
   { id: '656615987', name: 'Carles Navarro', role: 'Obra Nueva', league: 'obranueva', email: 'carles@inmobiliariapalanca.com', phone: '656615987' },
