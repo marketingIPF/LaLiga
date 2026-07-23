@@ -36,10 +36,11 @@ export const SEED_USERS = [
 export const SEED_STAFF = [
   { id: '687795185', name: 'Mar Moscardó', role: 'Staff', league: 'staff', email: 'mar@inmobiliariapalanca.com', phone: '687795185' },
   { id: '620873587', name: 'Julia Ordóñez', role: 'Staff', league: 'staff', email: 'julia@inmobiliariapalanca.com', phone: '620873587' },
-  { id: '662658360', name: 'Mireia Sáez', role: 'Staff', league: 'staff', email: 'msaez@inmobiliariapalanca.com', phone: '662658360' },
+  { id: '662658360', name: 'Mireia Sáez', role: 'Staff', league: 'staff', email: 'msaez@inmobiliariapalanca.com', phone: '657169789' },
   { id: '620873588', name: 'Verónica Fortea', role: 'Staff', league: 'staff', email: 'vfortea@inmobiliariapalanca.com', phone: '620873588' },
   { id: '662658311', name: 'Marivi Gil', role: 'Staff', league: 'staff', email: 'postventa@inmobiliariapalanca.com', phone: '662658311' },
   { id: '621022064', name: 'Pedro Carrillo', role: 'Staff', league: 'staff', email: 'facturacion@inmobiliariapalanca.com', phone: '621022064' },
+  { id: 'staff-vicky', name: 'Vicky', role: 'Staff', league: 'staff', email: 'vicky@inmobiliariapalanca.com', phone: '662658360' },
   { id: 'staff-alex', name: 'Alex Moreno', role: 'Staff', league: 'staff', email: 'info@inmobiliariapalanca.com', phone: '' },
   { id: '653569847', name: 'Andrea Máñez', role: 'Staff', league: 'staff', email: 'andrea@inmobiliariapalanca.com', phone: '653569847' },
   { id: '661654156', name: 'Ros Aguilar', role: 'Obra Nueva', league: 'obranueva', email: 'obranueva@inmobiliariapalanca.com', phone: '661654156' },
