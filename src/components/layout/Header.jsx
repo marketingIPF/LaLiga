@@ -1,11 +1,11 @@
-import { Sun, Moon, LogOut } from 'lucide-react'
+import { Sun, Moon, LogOut, ShieldCheck } from 'lucide-react'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuth } from '../../context/AuthContext'
 import NotificationBell from '../ui/NotificationBell'
 
 export default function Header({ title, subtitle, showLogout = false }) {
   const { theme, toggle } = useTheme()
-  const { signOut } = useAuth()
+  const { signOut, isRealAdmin, viewAsUser, setViewAsUser } = useAuth()
 
   return (
     <header className="flex items-start justify-between pt-4 pb-6">
@@ -18,6 +18,16 @@ export default function Header({ title, subtitle, showLogout = false }) {
         <h1 className="text-2xl font-black tracking-tight">{title}</h1>
       </div>
       <div className="flex items-center gap-2">
+        {isRealAdmin && viewAsUser && (
+          <button
+            onClick={() => setViewAsUser(false)}
+            className="w-10 h-10 rounded-full bg-rk-ink text-rk-orange dark:bg-rk-cream/10 flex items-center justify-center shadow-md"
+            aria-label="Volver al modo admin"
+            title="Volver al modo admin"
+          >
+            <ShieldCheck size={18} />
+          </button>
+        )}
         <NotificationBell />
         <button
           onClick={toggle}
