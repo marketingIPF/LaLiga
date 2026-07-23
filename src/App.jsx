@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { ShieldCheck } from 'lucide-react'
 import { useAuth } from './context/AuthContext'
 
 import AppLayout from './components/layout/AppLayout'
@@ -19,6 +20,21 @@ import Panel from './views/Panel'
 import PanelAgentes from './views/PanelAgentes'
 import PanelEquipos from './views/PanelEquipos'
 import PanelPuntos from './views/PanelPuntos'
+
+// Pastilla flotante que solo ven los admins en modo usuario, para volver
+function VolverAdminPill() {
+  const { isRealAdmin, viewAsUser, setViewAsUser } = useAuth()
+  if (!isRealAdmin || !viewAsUser) return null
+  return (
+    <button
+      onClick={() => setViewAsUser(false)}
+      className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-2.5 rounded-full bg-rk-ink text-rk-cream text-xs font-extrabold shadow-2xl border border-white/10 active:scale-95 transition-transform"
+    >
+      <ShieldCheck size={14} className="text-rk-orange" />
+      Volver a admin
+    </button>
+  )
+}
 
 export default function App() {
   const { firebaseUser, profile, isAdmin, loading } = useAuth()
@@ -54,6 +70,8 @@ export default function App() {
   }
 
   return (
+    <>
+    <VolverAdminPill />
     <Routes>
       {/* Panel desktop — solo admins, layout sin BottomNav */}
       {isAdmin && (
@@ -80,5 +98,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </>
   )
 }
