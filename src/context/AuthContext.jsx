@@ -10,11 +10,26 @@ import { isAdminRole } from '../data/seedUsers'
 
 const AuthContext = createContext(null)
 
+const VIEW_AS_USER_KEY = 'laliga-view-as-user'
+
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
+
+  // Modo "ver como usuario" para admins. Se recuerda en el dispositivo.
+  const [viewAsUser, setViewAsUserState] = useState(
+    () => localStorage.getItem(VIEW_AS_USER_KEY) === '1'
+  )
+  const setViewAsUser = (value) => {
+    setViewAsUserState(value)
+    try {
+      localStorage.setItem(VIEW_AS_USER_KEY, value ? '1' : '0')
+    } catch {
+      // localStorage no disponible: el modo durará solo esta sesión
+    }
+  }
 
   // 1) Escucha cambios de auth
   useEffect(() => {
@@ -72,7 +87,11 @@ export function AuthProvider({ children }) {
 
   const signOut = () => fbSignOut(auth)
 
-  const isAdmin = profile ? isAdminRole(profile.role) : false
+  // isRealAdmin: el rol de verdad. isAdmin: lo que ve la interfaz —
+  // si un admin activa "ver como usuario", toda la app le trata como
+  // usuario normal hasta que lo desactive.
+  const isRealAdmin = profile ? isAdminRole(profile.role) : false
+  const isAdmin = isRealAdmin && !viewAsUser
 
   return (
     <AuthContext.Provider
@@ -80,6 +99,9 @@ export function AuthProvider({ children }) {
         firebaseUser,
         profile,
         isAdmin,
+        isRealAdmin,
+        viewAsUser,
+        setViewAsUser,
         loading,
         authError,
         login,
