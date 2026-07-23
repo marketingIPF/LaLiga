@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, TrendingUp, Users, Clock, RotateCcw, AlertTriangle, UserCog, Monitor } from 'lucide-react'
+import { ChevronRight, TrendingUp, Users, Clock, RotateCcw, AlertTriangle, UserCog, Monitor, Eye } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useActionRequests } from '../hooks/useActionRequests'
@@ -15,7 +15,7 @@ import Avatar from '../components/ui/Avatar'
 
 
 export default function AdminHome() {
-  const { profile } = useAuth()
+  const { profile, setViewAsUser } = useAuth()
   const { users } = useUsers()
   const { groups } = useGroups()
   const { requests: pending } = useActionRequests({ status: 'pending' })
@@ -100,6 +100,22 @@ export default function AdminHome() {
           <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
         </div>
       </Link>
+
+      {/* Ver la app como usuario */}
+      <button onClick={() => setViewAsUser(true)} className="block w-full text-left">
+        <div className="glass rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
+            <Eye size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm">Ver como usuario</div>
+            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
+              La app tal y como la ve el equipo. Podrás registrar tus propias acciones.
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
+        </div>
+      </button>
 
       {/* Métricas agencia */}
       <div className="grid grid-cols-2 gap-3">
