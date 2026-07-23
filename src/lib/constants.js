@@ -149,8 +149,8 @@ export const ACTION_TYPES = {
     points: 5,
     icon: '📱',
     description: 'Publicación en tu Instagram / WhatsApp.',
-    leagues: ['agentes'],
-    selfService: ['agentes'],
+    leagues: ['agentes', 'staff'],
+    selfService: ['agentes', 'staff'],
   },
   grabar_reel: {
     id: 'grabar_reel',
