@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react'
-import { Trophy, Users, User, Briefcase, Building2 } from 'lucide-react'
+import { Trophy, Users, User, Briefcase, Building2, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
-import { getUserLeague } from '../data/seedUsers'
+import { getUserLeague, isCompetitor } from '../data/seedUsers'
 import { formatPoints, cn } from '../lib/utils'
 import Header from '../components/layout/Header'
 import GlassCard from '../components/ui/GlassCard'
@@ -63,7 +63,7 @@ export default function Ranking() {
       </div>
 
       {tab === 'equipos' ? (
-        <GroupsLeaderboard groups={groupsByPoints} />
+        <GroupsLeaderboard groups={groupsByPoints} users={users} />
       ) : (
         <IndividualLeaderboard
           competitors={leagueBoard}
@@ -204,36 +204,81 @@ function RankRow({ position, user, topLifetime, isMe, showRole }) {
   )
 }
 
-function GroupsLeaderboard({ groups }) {
+function GroupsLeaderboard({ groups, users }) {
+  const [expandedId, setExpandedId] = useState(null)
+
   if (groups.length === 0)
     return <EmptyState text="Aún no hay equipos configurados" />
 
   return (
     <div className="space-y-3">
-      {groups.map((g, idx) => (
-        <GlassCard key={g.id} className="!p-4 flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl text-white font-black"
-            style={{ backgroundColor: g.color ?? '#cf731b' }}
-          >
-            {idx + 1}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold truncate">{g.name}</div>
-            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
-              {g.memberCount ?? 0} {g.memberCount === 1 ? 'miembro' : 'miembros'}
-            </div>
-          </div>
-          <div className="text-right whitespace-nowrap">
-            <div className="text-lg font-black text-rk-orange">
-              {formatPoints(g.totalPoints)}
-            </div>
-            <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
-              pts del periodo
-            </div>
-          </div>
-        </GlassCard>
-      ))}
+      {groups.map((g, idx) => {
+        const isOpen = expandedId === g.id
+        const members = users
+          .filter((u) => isCompetitor(u) && u.groupId === g.id)
+          .sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+        return (
+          <GlassCard key={g.id} className="!p-4">
+            <button
+              onClick={() => setExpandedId(isOpen ? null : g.id)}
+              className="w-full flex items-center gap-4 text-left"
+            >
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl text-white font-black shrink-0"
+                style={{ backgroundColor: g.color ?? '#cf731b' }}
+              >
+                {idx + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold truncate">{g.name}</div>
+                <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
+                  {members.length} {members.length === 1 ? 'miembro' : 'miembros'} · toca para ver
+                </div>
+              </div>
+              <div className="text-right whitespace-nowrap">
+                <div className="text-lg font-black text-rk-orange">
+                  {formatPoints(g.totalPoints)}
+                </div>
+                <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+                  pts del periodo
+                </div>
+              </div>
+              <ChevronDown
+                size={18}
+                className={cn(
+                  'shrink-0 text-rk-ink/40 dark:text-rk-cream/40 transition-transform duration-200',
+                  isOpen && 'rotate-180'
+                )}
+              />
+            </button>
+
+            {isOpen && (
+              <div className="mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.08] space-y-1.5 animate-fade-in">
+                {members.length === 0 ? (
+                  <div className="text-xs text-rk-ink/50 dark:text-rk-cream/50 py-2 text-center">
+                    Este equipo aún no tiene miembros.
+                  </div>
+                ) : (
+                  members.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2.5 px-1 py-1">
+                      <Avatar name={m.name} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold truncate">{m.name}</div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40">
+                          {m.role === 'Codirector' ? 'Staff' : m.role}
+                        </div>
+                      </div>
+                      <div className="text-xs font-black text-rk-orange whitespace-nowrap">
+                        {formatPoints(m.points ?? 0)} pts
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </GlassCard>
+        )
+      })}
     </div>
   )
 }
