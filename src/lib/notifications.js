@@ -10,9 +10,6 @@
 //   - action_pending      → admin: hay una nueva acción por aprobar
 //   - action_approved     → agente: te han aprobado la acción
 //   - action_rejected     → agente: te han rechazado la acción
-//   - billing_pending     → admin: hay una nueva facturación
-//   - billing_approved    → agente: te han aprobado la facturación
-//   - billing_rejected    → agente: te han rechazado la facturación
 //   - team_added          → agente: te han metido en un equipo
 //   - top3_ranking        → agente: has entrado en el top 3
 // ============================================================
@@ -28,6 +25,27 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db, COL } from './firebase'
+
+// ----------------------------------------------------------------
+// Ajustes de rendimiento
+// ----------------------------------------------------------------
+
+// Avisar a TODOS los admins cada vez que un agente registra una acción
+// genera mucho ruido (una notificación por admin por envío) y hace que la
+// campana y la lista crezcan sin parar. La pantalla de Aprobaciones ya
+// muestra el contador de pendientes, así que por defecto está desactivado.
+// Ponlo en true si algún día queréis recuperar el aviso.
+const NOTIFY_ADMINS_ON_NEW_REQUEST = false
+
+// checkAndNotifyTop3 tiene que leer usuarios para recalcular el podio.
+// Ejecutarlo en CADA aprobación lo hacía lento. Con esto se ejecuta como
+// máximo una vez cada X minutos por dispositivo; el podio no necesita ser
+// instantáneo al segundo.
+const TOP3_THROTTLE_MINUTES = 10
+const TOP3_LAST_RUN_KEY = 'laliga-top3-last-run'
+
+// Ligas de personas vigentes
+const PERSON_LEAGUES = ['agentes', 'obranueva', 'staff']
 
 // ----------------------------------------------------------------
 // Núcleo: crear una notificación
@@ -91,36 +109,59 @@ export async function notifyAllAdmins({ type, title, message, link = null, metad
 // ----------------------------------------------------------------
 // Detectar entradas al Top 3 y notificar
 // ----------------------------------------------------------------
-// Se llama después de cada aprobación. Lee todos los usuarios,
-// identifica quién está en el top 3 ahora, compara con el flag
-// `inTop3` que tienen guardado. A los nuevos entrantes les avisa
-// y les marca el flag. A los que han caído les limpia el flag.
+// Recalcula el podio de cada liga y avisa a los nuevos entrantes.
+// Optimizaciones respecto a la primera versión:
+//   1. Throttle: como máximo una ejecución cada TOP3_THROTTLE_MINUTES.
+//   2. Solo lee usuarios con puntos > 0 (los que están a 0 no pueden
+//      estar en ningún podio), en vez de la colección entera.
+//   3. Contempla las tres ligas actuales (antes se saltaba Obra Nueva).
 
-export async function checkAndNotifyTop3() {
+function top3ThrottleBlocks() {
   try {
-    const allSnap = await getDocs(collection(db, COL.users))
-    const allUsers = allSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const last = Number(localStorage.getItem(TOP3_LAST_RUN_KEY) || 0)
+    const elapsedMin = (Date.now() - last) / 60000
+    if (elapsedMin < TOP3_THROTTLE_MINUTES) return true
+    localStorage.setItem(TOP3_LAST_RUN_KEY, String(Date.now()))
+    return false
+  } catch {
+    // Sin localStorage no aplicamos throttle
+    return false
+  }
+}
+
+export async function checkAndNotifyTop3({ force = false } = {}) {
+  try {
+    if (!force && top3ThrottleBlocks()) return
+
+    // Solo quien tiene puntos puede estar en un podio.
+    const scoredSnap = await getDocs(
+      query(collection(db, COL.users), where('points', '>', 0))
+    )
+    const scored = scoredSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
 
     const leagueOf = (u) => {
       if (u.league) return u.league
       if (u.role === 'Agente Comercial') return 'agentes'
-      if (u.role === 'Staff' || u.role === 'Obra Nueva') return 'staff'
+      if (u.role === 'Obra Nueva') return 'obranueva'
+      if (u.role === 'Staff') return 'staff'
       return null
     }
 
     // Top 3 de cada liga por separado
     const newTop3Ids = new Set()
-    for (const league of ['agentes', 'staff']) {
-      const competitors = allUsers
+    for (const league of PERSON_LEAGUES) {
+      scored
         .filter((u) => leagueOf(u) === league)
-        .filter((u) => (u.points || 0) > 0)
         .sort((a, b) => (b.points || 0) - (a.points || 0))
-      competitors.slice(0, 3).forEach((u) => newTop3Ids.add(u.id))
+        .slice(0, 3)
+        .forEach((u) => newTop3Ids.add(u.id))
     }
 
-    const previouslyFlagged = new Set(
-      allUsers.filter((u) => u.inTop3 === true).map((u) => u.id)
+    // Quién estaba marcado antes (consulta pequeña, solo los del flag)
+    const flaggedSnap = await getDocs(
+      query(collection(db, COL.users), where('inTop3', '==', true))
     )
+    const previouslyFlagged = new Set(flaggedSnap.docs.map((d) => d.id))
 
     const newEntrants = [...newTop3Ids].filter((id) => !previouslyFlagged.has(id))
     const droppedOut = [...previouslyFlagged].filter((id) => !newTop3Ids.has(id))
@@ -156,15 +197,11 @@ export async function checkAndNotifyTop3() {
 }
 
 // ----------------------------------------------------------------
-// Formateo de importes en € para los mensajes
-// ----------------------------------------------------------------
-
-
-// ----------------------------------------------------------------
 // Helpers específicos por evento (los views/hooks llaman a estos)
 // ----------------------------------------------------------------
 
 export async function notifyActionPending({ agentName, actionLabel }) {
+  if (!NOTIFY_ADMINS_ON_NEW_REQUEST) return
   return notifyAllAdmins({
     type: 'action_pending',
     title: '🆕 Nueva solicitud',
@@ -192,9 +229,6 @@ export async function notifyActionRejected({ userId, actionLabel }) {
     link: '/',
   })
 }
-
-
-
 
 export async function notifyTeamAssignment({ userId, teamName }) {
   return createNotification({
