@@ -6,6 +6,8 @@ import {
   onSnapshot,
   query,
   where,
+  orderBy,
+  limit as fsLimit,
   doc,
   runTransaction,
   increment,
@@ -32,36 +34,91 @@ function tsMs(value) {
 
 /**
  * Listado en tiempo real de solicitudes (filtrable por estado y/o agente).
- * Ordenamos en cliente para evitar índices compuestos en Firestore.
+ *
+ * `max` limita cuántas se descargan. Importa mucho en las pestañas de
+ * "Aprobadas" / "Rechazadas": el histórico crece sin parar (sobre todo con
+ * las cargas masivas del CRM) y no tiene sentido traerlo entero al móvil.
+ *
+ * Para pedir "las N más recientes" hace falta un índice compuesto en
+ * Firestore (status + createdAt). Si ese índice todavía no existe, la
+ * consulta falla; en ese caso volvemos automáticamente al modo antiguo
+ * (traer todo y ordenar en cliente) para que la pantalla nunca se quede
+ * en blanco. Cuando el índice esté creado, se usa el camino rápido solo.
  */
-export function useActionRequests({ userId = null, status = null } = {}) {
+export function useActionRequests({ userId = null, status = null, max = null } = {}) {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const constraints = []
-    if (userId) constraints.push(where('userId', '==', userId))
-    if (status) constraints.push(where('status', '==', status))
+    let unsub = null
+    let cancelled = false
 
-    const q = constraints.length
-      ? query(collection(db, COL.actionRequests), ...constraints)
-      : collection(db, COL.actionRequests)
+    const baseConstraints = []
+    if (userId) baseConstraints.push(where('userId', '==', userId))
+    if (status) baseConstraints.push(where('status', '==', status))
 
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const handleSnap = (snap, { sortInClient, sliceTo }) => {
+      if (cancelled) return
+      let docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      if (sortInClient) {
         docs.sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt))
-        setRequests(docs)
-        setLoading(false)
-      },
-      (err) => {
-        console.error('useActionRequests error', err)
-        setLoading(false)
+        if (sliceTo) docs = docs.slice(0, sliceTo)
       }
-    )
-    return unsub
-  }, [userId, status])
+      setRequests(docs)
+      setLoading(false)
+    }
+
+    // Plan B: sin orderBy/limit (no necesita índice). Ordena en cliente.
+    const subscribeFallback = () => {
+      const q = baseConstraints.length
+        ? query(collection(db, COL.actionRequests), ...baseConstraints)
+        : collection(db, COL.actionRequests)
+      unsub = onSnapshot(
+        q,
+        (snap) => handleSnap(snap, { sortInClient: true, sliceTo: max }),
+        (err) => {
+          console.error('useActionRequests error', err)
+          if (!cancelled) setLoading(false)
+        }
+      )
+    }
+
+    // Plan A: las N más recientes directamente del servidor.
+    if (max) {
+      const q = query(
+        collection(db, COL.actionRequests),
+        ...baseConstraints,
+        orderBy('createdAt', 'desc'),
+        fsLimit(max)
+      )
+      unsub = onSnapshot(
+        q,
+        (snap) => handleSnap(snap, { sortInClient: false }),
+        (err) => {
+          // Falta el índice compuesto: reintentamos sin él.
+          if (err?.code === 'failed-precondition') {
+            console.warn(
+              'useActionRequests: falta el índice compuesto de Firestore ' +
+                '(actionRequests: status Asc + createdAt Desc). Usando modo lento. ' +
+                'Crea el índice para acelerar la app.'
+            )
+            if (unsub) unsub()
+            if (!cancelled) subscribeFallback()
+            return
+          }
+          console.error('useActionRequests error', err)
+          if (!cancelled) setLoading(false)
+        }
+      )
+    } else {
+      subscribeFallback()
+    }
+
+    return () => {
+      cancelled = true
+      if (unsub) unsub()
+    }
+  }, [userId, status, max])
 
   return { requests, loading }
 }
