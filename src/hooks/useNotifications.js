@@ -8,6 +8,7 @@ import {
   updateDoc,
   writeBatch,
   deleteDoc,
+  limit,
 } from 'firebase/firestore'
 import { db, COL } from '../lib/firebase'
 
@@ -79,6 +80,46 @@ export function useNotifications(userId) {
   )
 
   return { notifications, unreadCount, loading }
+}
+
+/**
+ * Hook LIGERO solo para el indicador de la campana.
+ *
+ * La campana vive en la cabecera de todas las pantallas, así que no puede
+ * permitirse descargar el histórico completo de notificaciones (que es lo
+ * que hacía antes vía useNotifications). Aquí pedimos únicamente las NO
+ * leídas y con un tope pequeño: para pintar el punto naranja basta saber
+ * si hay al menos una.
+ *
+ * Nota: son dos filtros de igualdad (userId + read), que Firestore resuelve
+ * combinando índices simples. No hace falta crear ningún índice compuesto.
+ */
+export function useUnreadCount(userId) {
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (!userId) {
+      setUnreadCount(0)
+      return
+    }
+    const q = query(
+      collection(db, COL.notifications),
+      where('userId', '==', userId),
+      where('read', '==', false),
+      limit(20)
+    )
+    const unsub = onSnapshot(
+      q,
+      (snap) => setUnreadCount(snap.size),
+      (err) => {
+        console.error('useUnreadCount error', err)
+        setUnreadCount(0)
+      }
+    )
+    return unsub
+  }, [userId])
+
+  return unreadCount
 }
 
 /**
