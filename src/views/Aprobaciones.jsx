@@ -12,7 +12,10 @@ export default function Aprobaciones() {
   const { firebaseUser, isAdmin } = useAuth()
   const [filter, setFilter] = useState('pending')
 
-  const { requests, loading } = useActionRequests({ status: filter })
+  // Pendientes: sin recortar (interesa verlas todas).
+  // Histórico: solo las 50 más recientes — el listado completo es enorme.
+  const max = filter === 'pending' ? null : 20
+  const { requests, loading } = useActionRequests({ status: filter, max })
 
   if (!isAdmin) {
     return (
@@ -91,6 +94,11 @@ export default function Aprobaciones() {
               actionable={filter === 'pending'}
             />
           ))}
+          {max && requests.length >= max && (
+            <p className="text-center text-xs text-rk-ink/40 dark:text-rk-cream/40 py-3">
+              Mostrando las {max} más recientes
+            </p>
+          )}
         </div>
       )}
     </div>
