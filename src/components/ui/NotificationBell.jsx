@@ -1,12 +1,13 @@
 import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { useNotifications } from '../../hooks/useNotifications'
+import { useUnreadCount } from '../../hooks/useNotifications'
 
 export default function NotificationBell() {
   const { firebaseUser } = useAuth()
   const navigate = useNavigate()
-  const { unreadCount } = useNotifications(firebaseUser?.uid)
+  // Hook ligero: solo cuenta las no leídas (máx. 20), no descarga el histórico.
+  const unreadCount = useUnreadCount(firebaseUser?.uid)
 
   return (
     <button
