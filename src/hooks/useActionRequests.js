@@ -126,9 +126,45 @@ export function useActionRequests({ userId = null, status = null, max = null } =
 /**
  * Crear una nueva solicitud (la firma el agente, queda pending).
  */
-export async function submitActionRequest({ user, actionType, notes = '' }) {
+// Tope de puntos por solicitud de autoservicio: lo fijan las reglas de
+// Firestore (un usuario no puede crearse una solicitud de más de 200 pts).
+export const SELF_REQUEST_MAX_POINTS = 200
+
+/**
+ * Cuántas unidades puede pedir un usuario de una acción en una sola
+ * solicitud, sin pasarse del tope de puntos.
+ *   RRSS (5 pts)   → hasta 40
+ *   Reel (10 pts)  → hasta 20
+ *   Evento (200)   → 1
+ */
+export function maxQuantityFor(action) {
+  if (!action?.points || action.points <= 0) return 1
+  return Math.max(1, Math.floor(SELF_REQUEST_MAX_POINTS / action.points))
+}
+
+/**
+ * Crear una nueva solicitud (la firma el usuario, queda pending).
+ *
+ * `quantity` permite pedir varias unidades de la misma acción de golpe
+ * (3 publicaciones en RRSS, 4 reseñas…). Se guarda UNA sola solicitud con
+ * los puntos ya multiplicados, así el admin la aprueba de una vez en
+ * lugar de tener que revisar tres entradas iguales.
+ */
+export async function submitActionRequest({
+  user,
+  actionType,
+  notes = '',
+  quantity = 1,
+}) {
   const action = ACTION_TYPES[actionType]
   if (!action) throw new Error('Tipo de acción no válido')
+
+  const qty = Math.min(
+    maxQuantityFor(action),
+    Math.max(1, Math.floor(Number(quantity) || 1))
+  )
+  const points = action.points * qty
+  const label = qty > 1 ? `${action.label} ×${qty}` : action.label
 
   const result = await addDoc(collection(db, COL.actionRequests), {
     userId: user.id,
@@ -136,8 +172,9 @@ export async function submitActionRequest({ user, actionType, notes = '' }) {
     userEmail: user.email,
     groupId: user.groupId ?? null,
     actionType: action.id,
-    actionLabel: action.label,
-    points: action.points,
+    actionLabel: label,
+    quantity: qty,
+    points,
     notes: notes.trim(),
     status: 'pending',
     createdAt: serverTimestamp(),
@@ -147,7 +184,7 @@ export async function submitActionRequest({ user, actionType, notes = '' }) {
   })
 
   // Notificar a todos los admins (best-effort, no bloquea el envío)
-  notifyActionPending({ agentName: user.name, actionLabel: action.label }).catch((e) =>
+  notifyActionPending({ agentName: user.name, actionLabel: label }).catch((e) =>
     console.error('notifyActionPending failed', e)
   )
 
