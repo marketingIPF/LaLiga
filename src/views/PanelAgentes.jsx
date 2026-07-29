@@ -1,8 +1,13 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   ArrowLeft, UserPlus, Search, Trash2, X, AlertTriangle, Shield,
+  History, TrendingUp, TrendingDown,
 } from 'lucide-react'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import { db, COL } from '../lib/firebase'
+import { ACTION_TYPES } from '../lib/constants'
+import { relativeDate } from '../lib/utils'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
@@ -21,6 +26,7 @@ export default function PanelAgentes() {
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [removing, setRemoving] = useState(null)
+  const [historyUser, setHistoryUser] = useState(null)
 
   const groupById = useMemo(
     () => Object.fromEntries(groups.map((g) => [g.id, g])),
@@ -128,7 +134,17 @@ export default function PanelAgentes() {
                   className="grid grid-cols-[44px_1.4fr_2fr_0.9fr_1.2fr_0.7fr_56px] gap-3 px-5 py-3 items-center hover:bg-black/[0.015] dark:hover:bg-white/[0.015]"
                 >
                   <Avatar name={u.name} size="sm" />
-                  <div className="font-bold text-sm truncate">{u.name}</div>
+                  <button
+                    onClick={() => setHistoryUser(u)}
+                    className="font-bold text-sm truncate text-left hover:text-rk-orange transition flex items-center gap-1.5 group"
+                    title="Ver historial de puntos"
+                  >
+                    <span className="truncate">{u.name}</span>
+                    <History
+                      size={12}
+                      className="shrink-0 opacity-0 group-hover:opacity-100 transition text-rk-orange"
+                    />
+                  </button>
                   <div className="text-xs text-rk-ink/70 dark:text-rk-cream/70 truncate">
                     {u.email}
                   </div>
@@ -187,6 +203,9 @@ export default function PanelAgentes() {
       )}
       {removing && (
         <RemoveAgentModal user={removing} onClose={() => setRemoving(null)} />
+      )}
+      {historyUser && (
+        <HistoryDrawer user={historyUser} onClose={() => setHistoryUser(null)} />
       )}
     </div>
   )
@@ -491,4 +510,247 @@ function RemoveAgentModal({ user, onClose }) {
       </div>
     </div>
   )
+}
+
+
+// ====================================================================
+// Historial de puntos de un agente (carga bajo demanda)
+// --------------------------------------------------------------------
+// Se pide solo al abrir, y solo las solicitudes de ESA persona: un
+// único filtro (userId), así que no necesita índices en Firestore.
+// Usamos getDocs (una sola lectura) en vez de suscripción en tiempo
+// real, que aquí no aporta y costaría más.
+// ====================================================================
+function HistoryDrawer({ user, onClose }) {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [onlyApproved, setOnlyApproved] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const snap = await getDocs(
+          query(collection(db, COL.actionRequests), where('userId', '==', user.id))
+        )
+        if (cancelled) return
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        docs.sort((a, b) => tsMillis(b.createdAt) - tsMillis(a.createdAt))
+        setRows(docs)
+      } catch (e) {
+        console.error('historial error', e)
+        if (!cancelled) setError('No se pudo cargar el historial.')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [user.id])
+
+  const approved = useMemo(() => rows.filter((r) => r.status === 'approved'), [rows])
+  const visible = onlyApproved ? approved : rows
+
+  // Resumen por tipo de acción (solo aprobadas: es de donde vienen los puntos)
+  const breakdown = useMemo(() => {
+    const map = {}
+    for (const r of approved) {
+      const key = r.actionType || 'otros'
+      if (!map[key]) map[key] = { count: 0, points: 0 }
+      map[key].count++
+      map[key].points += r.points || 0
+    }
+    return Object.entries(map)
+      .map(([type, v]) => ({
+        type,
+        label: ACTION_TYPES[type]?.label ?? type,
+        icon: ACTION_TYPES[type]?.icon ?? '✨',
+        ...v,
+      }))
+      .sort((a, b) => b.points - a.points)
+  }, [approved])
+
+  const totalPoints = approved.reduce((acc, r) => acc + (r.points || 0), 0)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[520px] h-full bg-rk-cream dark:bg-rk-ink overflow-y-auto shadow-2xl"
+      >
+        {/* Cabecera */}
+        <div className="sticky top-0 z-10 bg-rk-cream/95 dark:bg-rk-ink/95 backdrop-blur border-b border-black/[0.06] dark:border-white/[0.06] px-6 py-5">
+          <div className="flex items-start gap-3">
+            <Avatar name={user.name} size="md" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-extrabold tracking-[2px] text-rk-orange">
+                HISTORIAL DE PUNTOS
+              </p>
+              <h2 className="text-xl font-black truncate mt-0.5">{user.name}</h2>
+              <p className="text-xs text-rk-ink/60 dark:text-rk-cream/60 truncate">
+                {user.email}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center transition shrink-0"
+              aria-label="Cerrar"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {loading ? (
+            <p className="text-center text-sm text-rk-ink/60 dark:text-rk-cream/60 py-12">
+              Cargando historial…
+            </p>
+          ) : error ? (
+            <div className="bg-red-500/10 text-red-500 rounded-2xl px-4 py-3 text-sm font-bold">
+              {error}
+            </div>
+          ) : (
+            <>
+              {/* Totales */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-4 border border-black/[0.04] dark:border-white/[0.05]">
+                  <div className="text-[9px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50">
+                    PUNTOS SUMADOS
+                  </div>
+                  <div className="text-2xl font-black mt-1 text-rk-orange">
+                    {formatPoints(totalPoints)}
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-4 border border-black/[0.04] dark:border-white/[0.05]">
+                  <div className="text-[9px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50">
+                    ACCIONES APROBADAS
+                  </div>
+                  <div className="text-2xl font-black mt-1">{approved.length}</div>
+                </div>
+              </div>
+
+              {/* Desglose por tipo */}
+              {breakdown.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50 mb-2">
+                    DE DÓNDE VIENEN SUS PUNTOS
+                  </h3>
+                  <div className="bg-white dark:bg-rk-ink-card rounded-2xl border border-black/[0.04] dark:border-white/[0.05] divide-y divide-black/[0.04] dark:divide-white/[0.05] overflow-hidden">
+                    {breakdown.map((b) => (
+                      <div key={b.type} className="flex items-center gap-3 px-4 py-2.5">
+                        <span className="text-lg">{b.icon}</span>
+                        <span className="flex-1 text-sm font-bold truncate">{b.label}</span>
+                        <span className="text-xs text-rk-ink/50 dark:text-rk-cream/50 tabular-nums">
+                          ×{b.count}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-sm font-black tabular-nums w-16 text-right',
+                            b.points >= 0 ? 'text-rk-orange' : 'text-red-500'
+                          )}
+                        >
+                          {b.points >= 0 ? '+' : ''}
+                          {formatPoints(b.points)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Listado detallado */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50">
+                    MOVIMIENTOS ({visible.length})
+                  </h3>
+                  <button
+                    onClick={() => setOnlyApproved((v) => !v)}
+                    className="text-[11px] font-extrabold text-rk-orange hover:underline"
+                  >
+                    {onlyApproved ? 'Ver también rechazadas' : 'Solo aprobadas'}
+                  </button>
+                </div>
+
+                {visible.length === 0 ? (
+                  <div className="bg-white dark:bg-rk-ink-card rounded-2xl border border-black/[0.04] dark:border-white/[0.05] py-10 text-center text-sm text-rk-ink/50 dark:text-rk-cream/50">
+                    Todavía no hay movimientos.
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {visible.map((r) => (
+                      <MovementRow key={r.id} row={r} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MovementRow({ row }) {
+  const isApproved = row.status === 'approved'
+  const isRejected = row.status === 'rejected'
+  const negative = (row.points || 0) < 0
+  const icon = ACTION_TYPES[row.actionType]?.icon ?? '✨'
+
+  return (
+    <div
+      className={cn(
+        'bg-white dark:bg-rk-ink-card rounded-xl border px-4 py-2.5 flex items-center gap-3',
+        isRejected
+          ? 'border-red-500/20 opacity-70'
+          : 'border-black/[0.04] dark:border-white/[0.05]'
+      )}
+    >
+      <span className="text-lg shrink-0">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-bold truncate">{row.actionLabel}</div>
+        <div className="text-[11px] text-rk-ink/50 dark:text-rk-cream/50">
+          {relativeDate(row.createdAt)}
+          {isRejected && ' · rechazada'}
+          {!isApproved && !isRejected && ' · pendiente'}
+        </div>
+        {row.notes && (
+          <div className="text-[11px] text-rk-ink/60 dark:text-rk-cream/60 mt-0.5 line-clamp-2">
+            {row.notes}
+          </div>
+        )}
+      </div>
+      <div
+        className={cn(
+          'text-sm font-black tabular-nums shrink-0 flex items-center gap-1',
+          isRejected
+            ? 'text-rk-ink/40 dark:text-rk-cream/40 line-through'
+            : negative
+            ? 'text-red-500'
+            : 'text-rk-orange'
+        )}
+      >
+        {isApproved && (negative ? <TrendingDown size={13} /> : <TrendingUp size={13} />)}
+        {negative ? '' : '+'}
+        {row.points}
+      </div>
+    </div>
+  )
+}
+
+// Timestamp de Firestore (o fecha) a milisegundos
+function tsMillis(value) {
+  if (!value) return 0
+  if (typeof value.toMillis === 'function') return value.toMillis()
+  return new Date(value).getTime()
 }
