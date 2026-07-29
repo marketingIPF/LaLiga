@@ -85,7 +85,7 @@ export default function Perfil() {
       </GlassCard>
 
       <p className="text-center text-[10px] font-semibold uppercase tracking-wider text-rk-ink/30 dark:text-rk-cream/30 pt-4">
-        RK Palanca Fontestad · La Liga v0.1
+        RK Palanca Fontestad · La Liga v0.2
       </p>
     </div>
   )
