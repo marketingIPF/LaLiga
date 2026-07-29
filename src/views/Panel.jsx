@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   Check, X, LogOut, Smartphone, Sun, Moon, Users, UserCog, ClipboardList,
+  Activity, BarChart3, UserX,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -38,7 +39,12 @@ export default function Panel() {
   const { users } = useUsers()
   const { groups } = useGroups()
   const { requests: pendingActions } = useActionRequests({ status: 'pending' })
-  const { requests: approvedActions } = useActionRequests({ status: 'approved' })
+  // Límite: el panel solo necesita lo reciente (semana, feed, gráfico).
+  // Sin tope descargaba todo el histórico, que crece sin parar.
+  const { requests: approvedActions } = useActionRequests({
+    status: 'approved',
+    max: 300,
+  })
 
   const agents = useMemo(
     () => users.filter((u) => getUserLeague(u) === 'agentes'),
@@ -107,6 +113,51 @@ export default function Panel() {
       ),
     [groups]
   )
+
+  // Últimos movimientos aprobados (el pulso de la agencia)
+  const recentActivity = useMemo(
+    () =>
+      [...approvedActions]
+        .sort((a, b) => tsMs(b.reviewedAt) - tsMs(a.reviewedAt))
+        .slice(0, 9),
+    [approvedActions]
+  )
+
+  // Puntos aprobados por día, últimos 14 días
+  const dailySeries = useMemo(() => {
+    const DAYS = 14
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const buckets = []
+    for (let i = DAYS - 1; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      buckets.push({ date: d, points: 0 })
+    }
+    const firstMs = buckets[0].date.getTime()
+
+    for (const r of approvedActions) {
+      const ms = tsMs(r.reviewedAt)
+      if (!ms || ms < firstMs) continue
+      const d = new Date(ms)
+      d.setHours(0, 0, 0, 0)
+      const idx = Math.round((d.getTime() - firstMs) / 86400000)
+      if (idx >= 0 && idx < buckets.length) {
+        buckets[idx].points += r.points || 0
+      }
+    }
+    return buckets
+  }, [approvedActions])
+
+  // Quién no ha sumado en los últimos 7 días
+  const inactivos = useMemo(() => {
+    const cutoff = Date.now() - 7 * 24 * 3600 * 1000
+    return users
+      .filter((u) => getUserLeague(u) !== null)
+      .filter((u) => tsMs(u.lastActionAt) < cutoff)
+      .sort((a, b) => tsMs(a.lastActionAt) - tsMs(b.lastActionAt))
+  }, [users])
 
   if (!isAdmin) return <Navigate to="/" replace />
 
@@ -215,9 +266,13 @@ export default function Panel() {
         />
       </div>
 
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-[1.5fr_1fr] gap-4">
-        <PendingPanel pending={pending} adminUid={firebaseUser?.uid} />
+      {/* MAIN GRID — items-start para que las tarjetas no se estiren */}
+      <div className="grid grid-cols-[1.5fr_1fr] gap-4 items-start">
+        <div className="flex flex-col gap-4">
+          <PendingPanel pending={pending} adminUid={firebaseUser?.uid} />
+          <DailyChart series={dailySeries} />
+          <ActivityFeed items={recentActivity} />
+        </div>
 
         <div className="flex flex-col gap-4">
           <RankingMini competitors={top5} tag="EL BOLETÍN" title="Top 5 · Agentes" />
@@ -226,6 +281,9 @@ export default function Panel() {
           <TeamsChart teams={teams} maxPts={maxTeamPts} />
         </div>
       </div>
+
+      {/* Sin actividad — ancho completo */}
+      <InactiveStrip people={inactivos} total={agents.length + staffLeague.length + obraNuevaLeague.length} />
     </div>
   )
 }
@@ -485,6 +543,172 @@ function TeamsChart({ teams, maxPts }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </PanelSection>
+  )
+}
+
+// ====================================================================
+// Evolución de puntos por día (últimos 14 días)
+// ====================================================================
+function DailyChart({ series }) {
+  const max = Math.max(1, ...series.map((d) => d.points))
+  const total = series.reduce((acc, d) => acc + d.points, 0)
+  const activos = series.filter((d) => d.points > 0).length
+
+  const DAY_LETTER = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
+
+  return (
+    <PanelSection
+      tag="RITMO"
+      title="Puntos por día"
+      badge={`${formatPoints(total)} pts · 14 días`}
+    >
+      {total === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-rk-ink/50 dark:text-rk-cream/50 py-6 justify-center font-semibold">
+          <BarChart3 size={16} />
+          Todavía no hay puntos aprobados en las últimas dos semanas.
+        </div>
+      ) : (
+        <>
+          <div className="flex items-end gap-1.5 h-32">
+            {series.map((d, i) => {
+              const isToday = i === series.length - 1
+              const pct = (d.points / max) * 100
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+                  <div className="w-full flex-1 flex items-end relative">
+                    {d.points > 0 && (
+                      <span className="absolute -top-4 left-0 right-0 text-center text-[9px] font-black text-rk-ink/50 dark:text-rk-cream/50 opacity-0 group-hover:opacity-100 transition">
+                        {d.points}
+                      </span>
+                    )}
+                    <div
+                      className={cn(
+                        'w-full rounded-t-md transition-all duration-500',
+                        isToday
+                          ? 'bg-rk-orange'
+                          : d.points > 0
+                          ? 'bg-rk-ink/75 dark:bg-rk-cream/70'
+                          : 'bg-black/[0.06] dark:bg-white/[0.07]'
+                      )}
+                      style={{ height: `${Math.max(d.points > 0 ? 6 : 3, pct)}%` }}
+                    />
+                  </div>
+                  <span
+                    className={cn(
+                      'text-[9px] font-bold',
+                      isToday
+                        ? 'text-rk-orange'
+                        : 'text-rk-ink/40 dark:text-rk-cream/40'
+                    )}
+                  >
+                    {DAY_LETTER[d.date.getDay()]}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-3 pt-3 border-t border-black/[0.04] dark:border-white/[0.05] text-[11px] font-semibold text-rk-ink/50 dark:text-rk-cream/50">
+            {activos} {activos === 1 ? 'día' : 'días'} con actividad ·{' '}
+            {formatPoints(Math.round(total / 14))} pts/día de media
+          </div>
+        </>
+      )}
+    </PanelSection>
+  )
+}
+
+// ====================================================================
+// Actividad reciente — últimos movimientos aprobados
+// ====================================================================
+function ActivityFeed({ items }) {
+  return (
+    <PanelSection tag="EL PULSO" title="Actividad reciente">
+      {items.length === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-rk-ink/50 dark:text-rk-cream/50 py-6 justify-center font-semibold">
+          <Activity size={16} />
+          Aún no hay movimientos aprobados.
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {items.map((r) => {
+            const negative = (r.points || 0) < 0
+            return (
+              <div
+                key={r.id}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.03]"
+              >
+                <Avatar name={r.userName} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold truncate">{r.userName}</div>
+                  <div className="text-[11px] text-rk-ink/55 dark:text-rk-cream/55 truncate">
+                    {r.actionLabel}
+                  </div>
+                </div>
+                <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 whitespace-nowrap">
+                  {relativeDate(r.reviewedAt)}
+                </div>
+                <div
+                  className={cn(
+                    'text-sm font-black tabular-nums w-14 text-right',
+                    negative ? 'text-red-500' : 'text-rk-orange'
+                  )}
+                >
+                  {negative ? '' : '+'}
+                  {r.points}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </PanelSection>
+  )
+}
+
+// ====================================================================
+// Sin actividad esta semana — para dar un toque a quien toca
+// ====================================================================
+function InactiveStrip({ people, total }) {
+  const activos = total - people.length
+
+  return (
+    <PanelSection
+      tag="A QUIÉN DAR UN TOQUE"
+      title="Sin sumar esta semana"
+      badge={`${activos}/${total} activos`}
+    >
+      {people.length === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 py-4 justify-center font-bold">
+          <Check size={16} />
+          ¡Todo el mundo ha sumado esta semana!
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {people.map((u) => {
+            const ms = tsMs(u.lastActionAt)
+            return (
+              <div
+                key={u.id}
+                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.05]"
+                title={
+                  ms
+                    ? `Última acción: ${relativeDate(u.lastActionAt)}`
+                    : 'Nunca ha registrado nada'
+                }
+              >
+                <Avatar name={u.name} size="sm" />
+                <div className="leading-tight">
+                  <div className="text-[11.5px] font-extrabold">{u.name}</div>
+                  <div className="text-[9.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45">
+                    {ms ? relativeDate(u.lastActionAt) : 'sin actividad'}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </PanelSection>
