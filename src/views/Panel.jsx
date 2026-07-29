@@ -572,7 +572,7 @@ function DailyChart({ series }) {
         </div>
       ) : (
         <>
-          <div className="flex items-end gap-1.5 h-32">
+          <div className="flex items-stretch gap-1.5 h-32">
             {series.map((d, i) => {
               const isToday = i === series.length - 1
               const pct = (d.points / max) * 100
