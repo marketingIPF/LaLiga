@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 
 import AppLayout from './components/layout/AppLayout'
@@ -19,6 +20,25 @@ import Panel from './views/Panel'
 import PanelAgentes from './views/PanelAgentes'
 import PanelEquipos from './views/PanelEquipos'
 import PanelPuntos from './views/PanelPuntos'
+
+// Al cambiar de pantalla, volver arriba. React Router no reinicia el
+// scroll por sí solo: como no se recarga la página, el navegador mantiene
+// la posición y entrabas en la pantalla nueva a media altura.
+function ScrollToTop() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    // Ventana (caso habitual)
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    // Y por si el scroll lo lleva un contenedor interno del layout
+    const scrollables = document.querySelectorAll('main, [data-scroll-root]')
+    scrollables.forEach((el) => {
+      if (el.scrollTop > 0) el.scrollTop = 0
+    })
+  }, [pathname])
+
+  return null
+}
 
 export default function App() {
   const { firebaseUser, profile, isAdmin, loading } = useAuth()
@@ -54,6 +74,8 @@ export default function App() {
   }
 
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       {/* Panel desktop — solo admins, layout sin BottomNav */}
       {isAdmin && (
@@ -80,5 +102,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </>
   )
 }
