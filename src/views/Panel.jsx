@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   Check, X, LogOut, Smartphone, Sun, Moon, Users, UserCog, ClipboardList,
-  Activity, BarChart3, UserX,
+  Activity, BarChart3, UserX, ChevronRight,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -32,6 +32,7 @@ function tsMs(value) {
 // Panel principal
 // ====================================================================
 export default function Panel() {
+  const [openBoard, setOpenBoard] = useState(null) // clasificación completa
   const { firebaseUser, profile, isAdmin, signOut } = useAuth()
   const { theme, toggle } = useTheme()
 
@@ -97,6 +98,17 @@ export default function Panel() {
         .slice(0, 3),
     [staffLeague]
   )
+
+  // Clasificaciones completas (ya tenemos los usuarios cargados: coste cero)
+  const boards = useMemo(() => {
+    const sortByPoints = (list) =>
+      [...list].sort((a, b) => (b.points || 0) - (a.points || 0))
+    return {
+      agentes: { label: 'Agentes', people: sortByPoints(agents) },
+      obranueva: { label: 'Obra Nueva', people: sortByPoints(obraNuevaLeague) },
+      staff: { label: 'Staff', people: sortByPoints(staffLeague) },
+    }
+  }, [agents, obraNuevaLeague, staffLeague])
 
   const top3ObraNueva = useMemo(
     () =>
@@ -275,15 +287,40 @@ export default function Panel() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <RankingMini competitors={top5} tag="EL BOLETÍN" title="Top 5 · Agentes" />
-          <RankingMini competitors={top3ObraNueva} tag="EL BOLETÍN" title="Top 3 · Obra Nueva" />
-          <RankingMini competitors={top3Staff} tag="EL BOLETÍN" title="Top 3 · Staff" />
+          <RankingMini
+            competitors={top5}
+            tag="EL BOLETÍN"
+            title="Top 5 · Agentes"
+            total={boards.agentes.people.length}
+            onOpen={() => setOpenBoard('agentes')}
+          />
+          <RankingMini
+            competitors={top3ObraNueva}
+            tag="EL BOLETÍN"
+            title="Top 3 · Obra Nueva"
+            total={boards.obranueva.people.length}
+            onOpen={() => setOpenBoard('obranueva')}
+          />
+          <RankingMini
+            competitors={top3Staff}
+            tag="EL BOLETÍN"
+            title="Top 3 · Staff"
+            total={boards.staff.people.length}
+            onOpen={() => setOpenBoard('staff')}
+          />
           <TeamsChart teams={teams} maxPts={maxTeamPts} />
         </div>
       </div>
 
       {/* Sin actividad — ancho completo */}
       <InactiveStrip people={inactivos} total={agents.length + staffLeague.length + obraNuevaLeague.length} />
+
+      {openBoard && (
+        <LeagueBoardDrawer
+          league={boards[openBoard]}
+          onClose={() => setOpenBoard(null)}
+        />
+      )}
     </div>
   )
 }
@@ -446,59 +483,77 @@ function PendingItem({ item, adminUid }) {
 // ====================================================================
 // Ranking Top 5
 // ====================================================================
-function RankingMini({ competitors, tag, title }) {
+function RankingMini({ competitors, tag, title, total, onOpen }) {
+  const hidden = total ? total - competitors.length : 0
   return (
-    <PanelSection tag={tag} title={title}>
+    <PanelSection
+      tag={tag}
+      title={title}
+      badge={total ? `${total} en liga` : undefined}
+    >
       {competitors.length === 0 ? (
         <div className="text-sm text-rk-ink/50 dark:text-rk-cream/50 py-4">
           Sin datos todavía.
         </div>
       ) : (
-        <div className="flex flex-col gap-1.5">
-          {competitors.map((u, i) => (
-            <div
-              key={u.id}
-              className={cn(
-                'flex items-center gap-2.5 px-3 py-2 bg-black/[0.02] dark:bg-white/[0.03] rounded-lg',
-                i === 0 && 'border-l-4 border-rk-orange'
-              )}
-            >
+        <>
+          <div className="flex flex-col gap-1.5">
+            {competitors.map((u, i) => (
               <div
+                key={u.id}
                 className={cn(
-                  'w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0',
-                  i === 0
-                    ? 'bg-rk-orange text-white'
-                    : i < 3
-                    ? 'bg-black/[0.08] text-rk-ink dark:bg-white/10 dark:text-rk-cream'
-                    : 'bg-black/[0.05] text-rk-ink/60 dark:bg-white/[0.06] dark:text-rk-cream/60'
+                  'flex items-center gap-2.5 px-3 py-2 bg-black/[0.02] dark:bg-white/[0.03] rounded-lg',
+                  i === 0 && 'border-l-4 border-rk-orange'
                 )}
               >
-                {i + 1}
+                <div
+                  className={cn(
+                    'w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0',
+                    i === 0
+                      ? 'bg-rk-orange text-white'
+                      : i < 3
+                      ? 'bg-black/[0.08] text-rk-ink dark:bg-white/10 dark:text-rk-cream'
+                      : 'bg-black/[0.05] text-rk-ink/60 dark:bg-white/[0.06] dark:text-rk-cream/60'
+                  )}
+                >
+                  {i + 1}
+                </div>
+                <span
+                  className={cn(
+                    'flex-1 text-xs font-extrabold truncate',
+                    i >= 3 && 'text-rk-ink/70 dark:text-rk-cream/70 font-bold'
+                  )}
+                >
+                  {u.name}
+                </span>
+                <span
+                  className={cn(
+                    'font-black text-sm whitespace-nowrap',
+                    i >= 3 && 'font-extrabold text-rk-ink/70 dark:text-rk-cream/70'
+                  )}
+                >
+                  {formatPoints(u.points || 0)}
+                </span>
               </div>
-              <span
-                className={cn(
-                  'flex-1 text-xs font-extrabold truncate',
-                  i >= 3 && 'text-rk-ink/70 dark:text-rk-cream/70 font-bold'
-                )}
-              >
-                {u.name}
-              </span>
-              <span
-                className={cn(
-                  'font-black text-sm whitespace-nowrap',
-                  i >= 3 &&
-                    'font-extrabold text-rk-ink/70 dark:text-rk-cream/70'
-                )}
-              >
-                {formatPoints(u.points || 0)}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          {onOpen && (
+            <button
+              onClick={onOpen}
+              className="mt-2.5 w-full flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-extrabold text-rk-orange hover:bg-rk-orange/10 transition"
+            >
+              Ver clasificación completa
+              {hidden > 0 && ` (+${hidden})`}
+              <ChevronRight size={13} />
+            </button>
+          )}
+        </>
       )}
     </PanelSection>
   )
 }
+
 
 // ====================================================================
 // Equipos — barras de progreso
@@ -712,5 +767,109 @@ function InactiveStrip({ people, total }) {
         </div>
       )}
     </PanelSection>
+  )
+}
+
+// ====================================================================
+// Clasificación completa de una liga (panel lateral)
+// --------------------------------------------------------------------
+// No hace ninguna lectura extra: los usuarios ya están cargados por el
+// hook compartido, aquí solo se ordenan y se muestran.
+// ====================================================================
+function LeagueBoardDrawer({ league, onClose }) {
+  const people = league?.people ?? []
+  const totalPoints = people.reduce((acc, u) => acc + (u.points || 0), 0)
+  const conPuntos = people.filter((u) => (u.points || 0) > 0).length
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[520px] h-full bg-rk-cream dark:bg-rk-ink overflow-y-auto shadow-2xl"
+      >
+        {/* Cabecera */}
+        <div className="sticky top-0 z-10 bg-rk-cream/95 dark:bg-rk-ink/95 backdrop-blur border-b border-black/[0.06] dark:border-white/[0.06] px-6 py-5">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-extrabold tracking-[2px] text-rk-orange">
+                CLASIFICACIÓN COMPLETA
+              </p>
+              <h2 className="text-xl font-black mt-0.5">{league.label}</h2>
+              <p className="text-xs text-rk-ink/60 dark:text-rk-cream/60 mt-0.5">
+                {people.length} participantes · {conPuntos} con puntos ·{' '}
+                {formatPoints(totalPoints)} pts en total
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center transition shrink-0"
+              aria-label="Cerrar"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Listado */}
+        <div className="px-6 py-5">
+          {people.length === 0 ? (
+            <div className="text-center text-sm text-rk-ink/50 dark:text-rk-cream/50 py-12">
+              No hay participantes en esta liga.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {people.map((u, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+                const sinPuntos = (u.points || 0) === 0
+                return (
+                  <div
+                    key={u.id}
+                    className={cn(
+                      'flex items-center gap-3 px-3.5 py-2.5 rounded-xl border',
+                      i === 0
+                        ? 'bg-rk-orange/[0.07] border-rk-orange/25'
+                        : 'bg-white dark:bg-rk-ink-card border-black/[0.04] dark:border-white/[0.05]',
+                      sinPuntos && 'opacity-60'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'w-7 h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0',
+                        i === 0
+                          ? 'bg-rk-orange text-white'
+                          : 'bg-black/[0.06] text-rk-ink/70 dark:bg-white/[0.08] dark:text-rk-cream/70'
+                      )}
+                    >
+                      {i + 1}
+                    </div>
+                    <Avatar name={u.name} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-extrabold truncate flex items-center gap-1.5">
+                        {u.name}
+                        {medal && <span className="text-sm">{medal}</span>}
+                      </div>
+                      <div className="text-[10.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45">
+                        {u.role === 'Codirector' ? 'Staff (Admin)' : u.role}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-black text-rk-orange tabular-nums">
+                        {formatPoints(u.points || 0)}
+                      </div>
+                      <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 tabular-nums">
+                        {formatPoints(u.lifetimePoints || 0)} hist.
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
