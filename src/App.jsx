@@ -16,6 +16,7 @@ import CambiarPassword from './views/CambiarPassword'
 import GestionEquipos from './views/GestionEquipos'
 import GestionAgentes from './views/GestionAgentes'
 import Notificaciones from './views/Notificaciones'
+import Actividad from './views/Actividad'
 import Onboarding from './views/Onboarding'
 import Panel from './views/Panel'
 import PanelAgentes from './views/PanelAgentes'
@@ -107,6 +108,7 @@ export default function App() {
         <Route path="/perfil" element={<Perfil />} />
         <Route path="/cambiar-password" element={<CambiarPassword />} />
         <Route path="/notificaciones" element={<Notificaciones />} />
+        <Route path="/actividad" element={<Actividad />} />
         {isAdmin && <Route path="/aprobaciones" element={<Aprobaciones />} />}
         {isAdmin && <Route path="/equipos" element={<GestionEquipos />} />}
         {isAdmin && <Route path="/agentes" element={<GestionAgentes />} />}
