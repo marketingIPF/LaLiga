@@ -86,6 +86,8 @@ export async function createAgent({
       periodBilling: 0,
       totalBilling: 0,
       mustChangePassword: true,
+      // Los usuarios nuevos ven la introducción en su primer acceso.
+      onboardingVisto: false,
       createdAt: serverTimestamp(),
       lastActionAt: null,
     })
