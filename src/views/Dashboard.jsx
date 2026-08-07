@@ -385,6 +385,13 @@ export default function Dashboard() {
         </GlassCard>
       )}
 
+      {/* Aviso, solo si lleva tiempo sin sumar */}
+      {nudge && (
+        <div className="rounded-2xl px-4 py-3 text-[12.5px] font-bold text-center bg-black/[0.04] dark:bg-white/[0.05] text-rk-ink/70 dark:text-rk-cream/70">
+          {nudge}
+        </div>
+      )}
+
       {/* Tu entorno en la tabla */}
       {neighbours.length > 1 && (
         <Link to="/ranking" className="block active:scale-[0.99] transition-transform">
@@ -455,12 +462,35 @@ export default function Dashboard() {
         </Link>
       )}
 
-      {/* Aviso, solo si lleva tiempo sin sumar */}
-      {nudge && (
-        <div className="rounded-2xl px-4 py-3 text-[12.5px] font-bold text-center bg-black/[0.04] dark:bg-white/[0.05] text-rk-ink/70 dark:text-rk-cream/70">
-          {nudge}
+      {/* Registra rápido — tira horizontal */}
+      <section>
+        <div className="flex items-center justify-between mb-2.5">
+          <h2 className="text-base font-black">Registra rápido</h2>
+          <Link
+            to="/registrar"
+            className="text-xs font-bold text-rk-orange flex items-center gap-0.5"
+          >
+            Todas <ChevronRight size={14} />
+          </Link>
         </div>
-      )}
+        <div className="flex gap-2.5 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-none">
+          {quickActions.map((action) => (
+            <Link
+              key={action.id}
+              to={`/registrar?tipo=${action.id}`}
+              className="glass rounded-2xl p-3.5 min-w-[96px] shrink-0 active:scale-[0.97] transition-transform"
+            >
+              <div className="text-xl">{action.icon}</div>
+              <div className="text-[11.5px] font-extrabold leading-tight mt-2">
+                {action.shortLabel}
+              </div>
+              <div className="text-[10.5px] font-bold text-rk-orange mt-0.5">
+                +{action.points} pts
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* Esta semana — tres cifras en una sola tira */}
       <div className="grid grid-cols-3 rounded-2xl overflow-hidden glass">
@@ -514,36 +544,6 @@ export default function Dashboard() {
           </GlassCard>
         </Link>
       )}
-
-      {/* Registra rápido — tira horizontal */}
-      <section>
-        <div className="flex items-center justify-between mb-2.5">
-          <h2 className="text-base font-black">Registra rápido</h2>
-          <Link
-            to="/registrar"
-            className="text-xs font-bold text-rk-orange flex items-center gap-0.5"
-          >
-            Todas <ChevronRight size={14} />
-          </Link>
-        </div>
-        <div className="flex gap-2.5 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-none">
-          {quickActions.map((action) => (
-            <Link
-              key={action.id}
-              to={`/registrar?tipo=${action.id}`}
-              className="glass rounded-2xl p-3.5 min-w-[96px] shrink-0 active:scale-[0.97] transition-transform"
-            >
-              <div className="text-xl">{action.icon}</div>
-              <div className="text-[11.5px] font-extrabold leading-tight mt-2">
-                {action.shortLabel}
-              </div>
-              <div className="text-[10.5px] font-bold text-rk-orange mt-0.5">
-                +{action.points} pts
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
 
     </div>
   )
