@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ChevronRight, Clock, Flame, Check, ArrowUp, ArrowDown,
+  ChevronRight, Flame, Check, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
@@ -69,7 +69,6 @@ export default function Dashboard() {
   const leagueLabel = LEAGUES[league]?.label ?? 'Agentes'
   const quickActions = selfServiceActions(league).slice(0, 4)
   const recentRequests = requests.slice(0, 3)
-  const pendingCount = requests.filter((r) => r.status === 'pending').length
   const firstName = profile?.name?.split(' ')[0] ?? ''
 
   // ---- Posición, entorno en la tabla y zona de premio ----
@@ -546,30 +545,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Tu actividad — una fila, el detalle en su pantalla */}
-      <Link to="/notificaciones" className="block active:scale-[0.99] transition-transform">
-        <GlassCard className="!p-4 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-black/[0.05] dark:bg-white/[0.07] flex items-center justify-center shrink-0">
-            <Clock size={17} className="text-rk-ink/55 dark:text-rk-cream/55" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-extrabold">Tu actividad</div>
-            <div className="text-[11px] font-semibold text-rk-ink/55 dark:text-rk-cream/55">
-              {requests.length === 0
-                ? 'Aún no has registrado nada'
-                : pendingCount > 0
-                ? `${pendingCount} pendiente${pendingCount === 1 ? '' : 's'} de aprobar`
-                : `${requests.length} ${requests.length === 1 ? 'acción' : 'acciones'} registradas`}
-            </div>
-          </div>
-          {pendingCount > 0 && (
-            <span className="w-6 h-6 rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-300 text-[11px] font-black flex items-center justify-center">
-              {pendingCount}
-            </span>
-          )}
-          <ChevronRight size={17} className="text-rk-ink/25 dark:text-rk-cream/25" />
-        </GlassCard>
-      </Link>
     </div>
   )
 }

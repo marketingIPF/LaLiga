@@ -1,4 +1,6 @@
-import { Mail, Users, LogOut, Sun, Moon, KeyRound } from 'lucide-react'
+import {
+  Mail, Users, LogOut, Sun, Moon, KeyRound, History, ChevronRight,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -46,6 +48,25 @@ export default function Perfil() {
         <StatCard label="Puntos actuales" value={formatPoints(profile.points)} />
         <StatCard label="Histórico" value={formatPoints(profile.lifetimePoints)} />
       </div>
+
+      {/* Tu actividad */}
+      <button
+        onClick={() => navigate('/actividad')}
+        className="w-full active:scale-[0.99] transition-transform"
+      >
+        <GlassCard className="!p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
+            <History size={19} />
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <div className="text-sm font-bold">Tu actividad</div>
+            <div className="text-xs text-rk-ink/55 dark:text-rk-cream/55">
+              Todas tus acciones y su estado
+            </div>
+          </div>
+          <ChevronRight size={18} className="text-rk-ink/25 dark:text-rk-cream/25 shrink-0" />
+        </GlassCard>
+      </button>
 
       {/* Info contacto */}
       <GlassCard className="!p-0 overflow-hidden">
