@@ -16,6 +16,7 @@ import CambiarPassword from './views/CambiarPassword'
 import GestionEquipos from './views/GestionEquipos'
 import GestionAgentes from './views/GestionAgentes'
 import Notificaciones from './views/Notificaciones'
+import Onboarding from './views/Onboarding'
 import Panel from './views/Panel'
 import PanelAgentes from './views/PanelAgentes'
 import PanelEquipos from './views/PanelEquipos'
@@ -41,7 +42,7 @@ function ScrollToTop() {
 }
 
 export default function App() {
-  const { firebaseUser, profile, isAdmin, loading } = useAuth()
+  const { firebaseUser, profile, isAdmin, loading, needsOnboarding } = useAuth()
 
   if (loading) {
     return (
@@ -69,6 +70,17 @@ export default function App() {
     return (
       <Routes>
         <Route path="*" element={<CambiarPassword />} />
+      </Routes>
+    )
+  }
+
+  // Gate: los usuarios nuevos pasan por la introducción antes de entrar.
+  // Va después del cambio de contraseña para que el primer paso siga siendo
+  // asegurar la cuenta.
+  if (needsOnboarding) {
+    return (
+      <Routes>
+        <Route path="*" element={<Onboarding />} />
       </Routes>
     )
   }
