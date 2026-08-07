@@ -21,6 +21,9 @@ const TABS = [
 // Ligas individuales (todas menos 'equipos')
 const LEAGUE_TABS = ['agentes', 'obranueva', 'staff']
 
+// Cuántos puestos reparten premio en cada liga
+const PRIZE_SPOTS = { agentes: 5, obranueva: 2, staff: 3 }
+
 export default function Ranking() {
   const { profile } = useAuth()
   const { users, topLifetime } = useUsers()
@@ -70,6 +73,7 @@ export default function Ranking() {
           topLifetime={topLifetime}
           myId={profile?.id}
           showRole={tab !== 'agentes'}
+          prizeSpots={PRIZE_SPOTS[tab] ?? 3}
         />
       )}
     </div>
@@ -93,7 +97,7 @@ function ToggleTab({ active, onClick, Icon, label }) {
   )
 }
 
-function IndividualLeaderboard({ competitors, topLifetime, myId, showRole = false }) {
+function IndividualLeaderboard({ competitors, topLifetime, myId, showRole = false, prizeSpots = 3 }) {
   if (competitors.length === 0)
     return <EmptyState text="Aún no hay datos para mostrar" />
 
@@ -108,18 +112,45 @@ function IndividualLeaderboard({ competitors, topLifetime, myId, showRole = fals
         <PodiumSlot position={3} user={third} myId={myId} height="h-24" />
       </div>
 
-      {/* Resto del ranking */}
+      {/* Aviso de zona de premio */}
+      {competitors.length > 1 && (
+        <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5 bg-amber-400/[0.14] border border-dashed border-amber-400/45">
+          <span className="text-base">🏅</span>
+          <span className="text-[11.5px] font-extrabold text-amber-700 dark:text-amber-300">
+            {prizeSpots === 1
+              ? 'El primer puesto se lleva premio'
+              : `Los ${prizeSpots} primeros se llevan premio`}
+          </span>
+        </div>
+      )}
+
+      {/* Resto del ranking, con la línea de corte de premio */}
       <div className="space-y-2">
-        {rest.map((u, idx) => (
-          <RankRow
-            key={u.id}
-            position={idx + 4}
-            user={u}
-            topLifetime={topLifetime}
-            isMe={u.id === myId}
-            showRole={showRole}
-          />
-        ))}
+        {rest.map((u, idx) => {
+          const position = idx + 4
+          // La línea va justo antes del primer puesto sin premio
+          const showCut = position === prizeSpots + 1
+          return (
+            <div key={u.id} className="space-y-2">
+              {showCut && (
+                <div className="flex items-center gap-2.5 pt-1 pb-0.5">
+                  <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
+                  <span className="text-[9px] font-black tracking-[1.5px] text-rk-ink/35 dark:text-rk-cream/35">
+                    CORTE DE PREMIO
+                  </span>
+                  <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
+                </div>
+              )}
+              <RankRow
+                position={position}
+                user={u}
+                topLifetime={topLifetime}
+                isMe={u.id === myId}
+                showRole={showRole}
+              />
+            </div>
+          )
+        })}
       </div>
     </>
   )

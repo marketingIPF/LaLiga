@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Sparkles, ChevronRight, Clock, CheckCircle2, XCircle, Flame, Trophy,
+  Sparkles, ChevronRight, Clock, CheckCircle2, XCircle, Flame, Trophy, Check,
   Medal, Info, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -176,67 +176,168 @@ export default function Dashboard() {
     return null
   }, [isEmbajador, rank, next, pointsToNext, position, profile?.lastActionAt])
 
+  // ---- Primeros pasos: solo usuarios nuevos ----
+  // Los que ya jugaban tienen primerosPasos: 'hecho' (script de backfill).
+  const firstSteps = useMemo(() => {
+    if (profile?.primerosPasos === 'hecho') return null
+    const tasks = [
+      { id: 'pass', label: 'Cambia tu contraseña', done: true, hint: null },
+      {
+        id: 'accion',
+        label: 'Registra tu primera acción',
+        done: requests.length > 0,
+        hint: '+5 pts',
+        to: '/registrar',
+      },
+      {
+        id: 'punto',
+        label: 'Consigue tu primer punto',
+        done: (profile?.lifetimePoints ?? 0) > 0,
+        hint: null,
+      },
+    ]
+    const done = tasks.filter((t) => t.done).length
+    if (done === tasks.length) return null // completado: desaparece
+    return { tasks, done, total: tasks.length }
+  }, [profile?.primerosPasos, profile?.lifetimePoints, requests.length])
+
   return (
     <div className="space-y-5 animate-fade-in">
       <Header title={`${greeting()}, ${firstName}`} subtitle="La Liga RK" showLogout />
 
-      {/* Tarjeta principal: rango + progreso + posición */}
-      <GlassCard className="relative overflow-hidden">
-        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-rk-orange/20 blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col items-center text-center">
-          <RankBadge rankId={rank.id} size="md" />
+      {/* MARCADOR — todo el estado de un vistazo */}
+      <div className="relative overflow-hidden rounded-3xl bg-rk-ink text-white p-5 shadow-xl">
+        <div className="absolute -top-14 -right-12 w-44 h-44 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(207,115,27,.42), transparent 68%)' }}
+        />
+        <div className="relative flex items-center gap-4">
+          <CircularProgress
+            progress={isEmbajador ? 1 : progress}
+            rankKey={rank.id}
+            auraColor={rank.auraColor}
+            size={112}
+            strokeWidth={9}
+            trackColor="rgba(255,255,255,0.14)"
+            trackColorDark="rgba(255,255,255,0.14)"
+          >
+            <div className="text-[28px] font-black tracking-tight leading-none">
+              {formatPoints(profile?.points)}
+            </div>
+            <div className="text-[8.5px] font-bold uppercase tracking-[1.4px] text-white/50 mt-1">
+              puntos
+            </div>
+          </CircularProgress>
 
-          <div className="mt-5">
-            <CircularProgress
-              progress={isEmbajador ? 1 : progress}
-              rankKey={rank.id}
-              auraColor={rank.auraColor}
-              size={200}
-              strokeWidth={14}
-            >
-              <div className="text-5xl font-black tracking-tight">
-                {formatPoints(profile?.points)}
+          <div className="flex-1 min-w-0">
+            <RankBadge rankId={rank.id} size="sm" />
+            {position && (
+              <div className="text-[21px] font-black tracking-tight mt-2 leading-none">
+                {position}º{' '}
+                <span className="text-[11.5px] font-bold text-white/55">
+                  de {leagueSize} · {leagueLabel}
+                </span>
               </div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 mt-1">
-                puntos
-              </div>
-            </CircularProgress>
-          </div>
-
-          {/* Posición en la liga */}
-          {position && (
-            <Link
-              to="/ranking"
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rk-orange/10 active:scale-[0.97] transition-transform"
-            >
-              <Trophy size={14} className="text-rk-orange" />
-              <span className="text-sm font-extrabold text-rk-orange">
-                {position}º de {leagueSize}
-              </span>
-              <span className="text-xs font-semibold text-rk-ink/50 dark:text-rk-cream/50">
-                · {leagueLabel}
-              </span>
-            </Link>
-          )}
-
-          {/* Progreso al siguiente rango */}
-          <div className="mt-3.5 text-sm text-rk-ink/70 dark:text-rk-cream/70">
-            {isEmbajador ? (
-              <span className="font-semibold text-rk-orange">{rank.description}</span>
-            ) : next ? (
-              <>
-                Te faltan{' '}
-                <span className="font-bold text-rk-orange">
-                  {formatPoints(pointsToNext)} pts
-                </span>{' '}
-                para <span className="font-bold">{next.label}</span>
-              </>
-            ) : (
-              <span className="font-semibold">{current.description}</span>
             )}
+            <div className="text-[11px] font-semibold text-white/60 mt-1.5">
+              {isEmbajador ? (
+                rank.description
+              ) : next ? (
+                <>
+                  {next.label} a{' '}
+                  <span className="font-black text-rk-orange-light">
+                    {formatPoints(pointsToNext)} pts
+                  </span>
+                </>
+              ) : (
+                current.description
+              )}
+            </div>
           </div>
         </div>
-      </GlassCard>
+
+        {/* Pista de progreso con la marca de zona de premio */}
+        {prize && (
+          <div className="relative mt-4">
+            <div className="h-[7px] rounded-full bg-white/[0.13] relative overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${Math.max(4, Math.min(100, ((leagueSize - position + 1) / leagueSize) * 100))}%`,
+                  background: 'linear-gradient(90deg,#cf731b,#f0a94f)',
+                }}
+              />
+            </div>
+            {/* marca de la zona de premio */}
+            <div
+              className="absolute -top-1 w-[2px] h-[15px] rounded bg-amber-300/85"
+              style={{
+                left: `${Math.min(97, ((leagueSize - prize.spots) / leagueSize) * 100)}%`,
+              }}
+            />
+            <div className="flex justify-between mt-2 text-[8.5px] font-bold tracking-wide text-white/45">
+              <span>Último</span>
+              <span className="text-amber-300">◆ zona premio</span>
+              <span>1º</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Primeros pasos (solo usuarios nuevos) */}
+      {firstSteps && (
+        <GlassCard className="!p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-black">Primeros pasos</span>
+            <span className="text-[10.5px] font-extrabold text-rk-orange">
+              {firstSteps.done} de {firstSteps.total}
+            </span>
+          </div>
+          <div className="h-[5px] rounded-full bg-black/[0.07] dark:bg-white/[0.09] my-3 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-rk-orange transition-all duration-500"
+              style={{ width: `${(firstSteps.done / firstSteps.total) * 100}%` }}
+            />
+          </div>
+          <div className="divide-y divide-black/[0.05] dark:divide-white/[0.06]">
+            {firstSteps.tasks.map((t) => {
+              const Row = (
+                <div className="flex items-center gap-2.5 py-2.5">
+                  <div
+                    className={cn(
+                      'w-5 h-5 rounded-md shrink-0 flex items-center justify-center',
+                      t.done
+                        ? 'bg-emerald-500 text-white'
+                        : 'border-2 border-black/15 dark:border-white/20'
+                    )}
+                  >
+                    {t.done && <Check size={12} strokeWidth={3.5} />}
+                  </div>
+                  <span
+                    className={cn(
+                      'flex-1 text-[12.5px] font-bold',
+                      t.done && 'line-through text-rk-ink/35 dark:text-rk-cream/35'
+                    )}
+                  >
+                    {t.label}
+                  </span>
+                  {!t.done && t.hint && (
+                    <span className="text-[10.5px] font-extrabold text-rk-orange">
+                      {t.hint}
+                    </span>
+                  )}
+                </div>
+              )
+              return t.to && !t.done ? (
+                <Link key={t.id} to={t.to} className="block active:opacity-70">
+                  {Row}
+                </Link>
+              ) : (
+                <div key={t.id}>{Row}</div>
+              )
+            })}
+          </div>
+        </GlassCard>
+      )}
 
       {/* Zona de premio */}
       {prize && (
