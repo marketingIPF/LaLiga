@@ -7,6 +7,8 @@ import { ACTION_TYPES } from '../lib/constants'
 import { formatPoints, relativeDate, cn } from '../lib/utils'
 import GlassCard from '../components/ui/GlassCard'
 
+const MAX_MOVIMIENTOS = 30
+
 const FILTROS = [
   { id: 'todas', label: 'Todas' },
   { id: 'pending', label: 'Pendientes' },
@@ -23,18 +25,25 @@ const FILTROS = [
 export default function Actividad() {
   const { profile } = useAuth()
   const navigate = useNavigate()
-  const { requests, loading } = useActionRequests({ userId: profile?.id })
+  // Tope de movimientos que se descargan. Sin límite, el historial crece
+  // sin parar con las cargas semanales del CRM.
+  const { requests, loading } = useActionRequests({
+    userId: profile?.id,
+    max: MAX_MOVIMIENTOS,
+  })
   const [filtro, setFiltro] = useState('todas')
 
-  const resumen = useMemo(() => {
-    const aprobadas = requests.filter((r) => r.status === 'approved')
-    return {
-      puntos: aprobadas.reduce((acc, r) => acc + (r.points || 0), 0),
-      aprobadas: aprobadas.length,
+  // Los totales salen del perfil (siempre exactos, aunque la lista de abajo
+  // esté recortada). Las pendientes sí se cuentan de la lista: son pocas y
+  // siempre recientes, así que entran de sobra en el tope.
+  const resumen = useMemo(
+    () => ({
+      puntos: profile?.points ?? 0,
+      historico: profile?.lifetimePoints ?? 0,
       pendientes: requests.filter((r) => r.status === 'pending').length,
-      rechazadas: requests.filter((r) => r.status === 'rejected').length,
-    }
-  }, [requests])
+    }),
+    [profile?.points, profile?.lifetimePoints, requests]
+  )
 
   const visibles = useMemo(
     () => (filtro === 'todas' ? requests : requests.filter((r) => r.status === filtro)),
@@ -70,9 +79,9 @@ export default function Actividad() {
           </div>
         </div>
         <div className="py-3.5 text-center border-r border-black/[0.06] dark:border-white/[0.07]">
-          <div className="text-xl font-black">{resumen.aprobadas}</div>
+          <div className="text-xl font-black">{formatPoints(resumen.historico)}</div>
           <div className="text-[8.5px] font-bold uppercase tracking-wider text-rk-ink/45 dark:text-rk-cream/45 mt-0.5">
-            Aprobadas
+            Histórico
           </div>
         </div>
         <div className="py-3.5 text-center">
@@ -140,6 +149,11 @@ export default function Actividad() {
           {visibles.map((r) => (
             <FilaActividad key={r.id} req={r} />
           ))}
+          {requests.length >= MAX_MOVIMIENTOS && (
+            <p className="text-center text-[11px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 py-3">
+              Mostrando los {MAX_MOVIMIENTOS} movimientos más recientes
+            </p>
+          )}
         </div>
       )}
     </div>
