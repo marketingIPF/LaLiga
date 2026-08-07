@@ -4,7 +4,7 @@ import {
   signInWithEmailAndPassword,
   signOut as fbSignOut,
 } from 'firebase/auth'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { auth, db, COL } from '../lib/firebase'
 import { isAdminRole } from '../data/seedUsers'
 
@@ -87,11 +87,27 @@ export function AuthProvider({ children }) {
 
   const signOut = () => fbSignOut(auth)
 
+  /**
+   * Marca el onboarding como visto para el usuario actual. Se llama al
+   * terminar (o saltar) la introducción. Escribe solo ese campo, así que
+   * las reglas de Firestore lo permiten sin cambios.
+   */
+  const markOnboardingSeen = async () => {
+    if (!firebaseUser) return
+    await updateDoc(doc(db, COL.users, firebaseUser.uid), {
+      onboardingVisto: true,
+    })
+  }
+
   // isRealAdmin: el rol de verdad. isAdmin: lo que ve la interfaz —
   // si un admin activa "ver como usuario", toda la app le trata como
   // usuario normal hasta que lo desactive.
   const isRealAdmin = profile ? isAdminRole(profile.role) : false
   const isAdmin = isRealAdmin && !viewAsUser
+
+  // Solo los usuarios nuevos pasan por el onboarding. A los que ya estaban
+  // jugando se les marcó onboardingVisto: true con el script de backfill.
+  const needsOnboarding = profile ? profile.onboardingVisto !== true : false
 
   return (
     <AuthContext.Provider
@@ -102,6 +118,8 @@ export function AuthProvider({ children }) {
         isRealAdmin,
         viewAsUser,
         setViewAsUser,
+        needsOnboarding,
+        markOnboardingSeen,
         loading,
         authError,
         login,
