@@ -1,11 +1,7 @@
 import { useState, useMemo } from 'react'
-import { Link, Navigate } from 'react-router-dom'
-import {
-  Check, X, LogOut, Smartphone, Sun, Moon, Users, UserCog, ClipboardList,
-  Activity, BarChart3, UserX, ChevronRight,
-} from 'lucide-react'
+import { Navigate } from 'react-router-dom'
+import { Check, Activity, BarChart3, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useTheme } from '../context/ThemeContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
 import {
@@ -13,10 +9,10 @@ import {
   approveRequest,
   rejectRequest,
 } from '../hooks/useActionRequests'
-import { isAdminRole, getUserLeague } from '../data/seedUsers'
+import { getUserLeague } from '../data/seedUsers'
+import { PRIZE_SPOTS, premioDe } from '../lib/premios'
 import { formatPoints, relativeDate, cn } from '../lib/utils'
 import Avatar from '../components/ui/Avatar'
-import NotificationBell from '../components/ui/NotificationBell'
 
 // ====================================================================
 // Utilidades
@@ -33,8 +29,8 @@ function tsMs(value) {
 // ====================================================================
 export default function Panel() {
   const [openBoard, setOpenBoard] = useState(null) // clasificación completa
-  const { firebaseUser, profile, isAdmin, signOut } = useAuth()
-  const { theme, toggle } = useTheme()
+  const [ligaTab, setLigaTab] = useState('agentes')
+  const { firebaseUser, isAdmin } = useAuth()
 
   // Hooks llamados sin condición; el Navigate va después.
   const { users } = useUsers()
@@ -173,147 +169,274 @@ export default function Panel() {
 
   if (!isAdmin) return <Navigate to="/" replace />
 
-  const firstName = profile?.name?.split(' ')[0] ?? ''
   const maxTeamPts = teams[0]?.totalPoints || 1
 
+  const fecha = new Date().toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+  const totalPersonas =
+    agents.length + staffLeague.length + obraNuevaLeague.length
+  const ligaActiva = boards[ligaTab]
+
   return (
-    <div className="space-y-5 animate-fade-in min-w-[1024px]">
-      {/* HEADER */}
-      <header className="flex items-center pb-5 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <div>
-          <p className="text-[10px] font-bold tracking-[2px] text-rk-orange">
-            RK PALANCA · LA LIGA
-          </p>
-          <h1 className="text-2xl font-black tracking-tight mt-1">
-            Panel Admin
-          </h1>
-        </div>
+    <div className="min-w-[900px] max-w-[1360px] animate-fade-in">
+      {/* Título */}
+      <h1 className="text-[27px] font-black tracking-tight">Resumen</h1>
+      <p className="text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1 first-letter:uppercase">
+        {fecha} · {totalPersonas} personas compitiendo
+      </p>
 
-        <nav className="ml-8 flex items-center gap-2">
-          <Link
-            to="/panel/agentes"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
-          >
-            <UserCog size={13} /> Agentes
-          </Link>
-          <Link
-            to="/panel/equipos"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
-          >
-            <Users size={13} /> Equipos
-          </Link>
-          <Link
-            to="/panel/puntos"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-rk-orange/10 text-rk-orange hover:bg-rk-orange/15 transition"
-          >
-            <ClipboardList size={13} /> Cargar puntos
-          </Link>
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Link
-            to="/"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
-          >
-            <Smartphone size={13} /> Vista móvil
-          </Link>
-
-          <NotificationBell />
-
-          <button
-            onClick={toggle}
-            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition flex items-center justify-center"
-            aria-label="Cambiar tema"
-          >
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
-
-          <div className="flex items-center gap-2.5 pl-2">
-            <Avatar name={profile?.name} size="sm" />
-            <span className="font-bold text-sm">{firstName}</span>
-          </div>
-
-          <button
-            onClick={signOut}
-            className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition flex items-center justify-center"
-            aria-label="Cerrar sesión"
-          >
-            <LogOut size={15} />
-          </button>
-        </div>
-      </header>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-5 gap-3">
-        <KpiCard
-          label="AGENTES ACTIVOS"
-          value={agents.length}
-          sub={`en ${groups.length} ${groups.length === 1 ? 'equipo' : 'equipos'}`}
+      {/* KPIs — sin cajas, separados por líneas */}
+      <div className="flex border-y border-black/[0.08] dark:border-white/[0.09] mt-6">
+        <Kpi
+          label="Pendientes"
+          value={pending.length}
+          sub={pending.length === 0 ? 'todo al día' : 'esperando revisión'}
+          accent={pending.length > 0}
         />
-        <KpiCard
-          label="PUNTOS DEL PERIODO"
+        <Kpi
+          label="Puntos del periodo"
           value={formatPoints(totals.points)}
           sub={
             weekDeltas.points > 0
               ? `+${formatPoints(weekDeltas.points)} esta semana`
-              : 'Sin movimiento'
+              : 'sin movimiento'
           }
-          subUp={weekDeltas.points > 0}
+          up={weekDeltas.points > 0}
         />
-        <KpiCard
-          label="PUNTOS STAFF"
+        <Kpi
+          label="Agentes activos"
+          value={agents.length}
+          sub={`en ${teams.length} ${teams.length === 1 ? 'equipo' : 'equipos'}`}
+        />
+        <Kpi
+          label="Staff"
           value={formatPoints(totals.staffPoints)}
           sub={`${staffLeague.length} participantes`}
         />
-        <KpiCard
-          label="PUNTOS OBRA NUEVA"
+        <Kpi
+          label="Obra Nueva"
           value={formatPoints(totals.obraNuevaPoints)}
           sub={`${obraNuevaLeague.length} participantes`}
         />
-        <KpiCard
-          label="PENDIENTES DE APROBAR"
-          value={pending.length}
-          sub={pending.length === 0 ? 'Todo al día' : 'solicitudes esperando'}
-          accent
-        />
       </div>
 
-      {/* MAIN GRID — items-start para que las tarjetas no se estiren */}
-      <div className="grid grid-cols-[1.5fr_1fr] gap-4 items-start">
-        <div className="flex flex-col gap-4">
-          <PendingPanel pending={pending} adminUid={firebaseUser?.uid} />
-          <DailyChart series={dailySeries} />
-          <ActivityFeed items={recentActivity} />
+      <div className="grid grid-cols-[1.35fr_1fr] gap-6 items-start mt-2">
+        {/* ---------------- Columna izquierda ---------------- */}
+        <div>
+          <Seccion
+            titulo="Pendientes"
+            nota={pending.length > 0 ? `${pending.length} esperando` : null}
+          >
+            {pending.length === 0 ? (
+              <Vacio icono={<Check size={15} />} texto="Todo al día. No hay nada por revisar." />
+            ) : (
+              pending.map((p, i) => (
+                <PendingItem
+                  key={p.id}
+                  item={p}
+                  adminUid={firebaseUser?.uid}
+                  ultimo={i === pending.length - 1}
+                />
+              ))
+            )}
+          </Seccion>
+
+          {/* Gráfico sin contenedor */}
+          <div className="mt-7">
+            <div className="flex items-baseline mb-2.5">
+              <h2 className="text-[15.5px] font-black tracking-tight">Ritmo</h2>
+              <span className="text-[11.5px] font-semibold text-rk-ink/38 dark:text-rk-cream/38 ml-2.5">
+                últimos 14 días · {formatPoints(dailySeries.reduce((a, d) => a + d.points, 0))} pts
+              </span>
+            </div>
+            <DailyChart series={dailySeries} />
+          </div>
+
+          <Seccion titulo="Actividad reciente" className="mt-7">
+            {recentActivity.length === 0 ? (
+              <Vacio icono={<Activity size={15} />} texto="Aún no hay movimientos aprobados." />
+            ) : (
+              recentActivity.map((r, i) => (
+                <ActivityRow key={r.id} item={r} ultimo={i === recentActivity.length - 1} />
+              ))
+            )}
+          </Seccion>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <RankingMini
-            competitors={top5}
-            tag="EL BOLETÍN"
-            title="Top 5 · Agentes"
-            total={boards.agentes.people.length}
-            onOpen={() => setOpenBoard('agentes')}
-          />
-          <RankingMini
-            competitors={top3ObraNueva}
-            tag="EL BOLETÍN"
-            title="Top 3 · Obra Nueva"
-            total={boards.obranueva.people.length}
-            onOpen={() => setOpenBoard('obranueva')}
-          />
-          <RankingMini
-            competitors={top3Staff}
-            tag="EL BOLETÍN"
-            title="Top 3 · Staff"
-            total={boards.staff.people.length}
-            onOpen={() => setOpenBoard('staff')}
-          />
-          <TeamsChart teams={teams} maxPts={maxTeamPts} />
+        {/* ---------------- Columna derecha ---------------- */}
+        <div>
+          {/* Clasificación unificada */}
+          <div>
+            <div className="flex items-center mb-2.5">
+              <h2 className="text-[15.5px] font-black tracking-tight">
+                Clasificación
+              </h2>
+              <div className="ml-auto inline-flex bg-black/[0.055] dark:bg-white/[0.07] rounded-lg p-[2px] gap-[2px]">
+                {[
+                  { id: 'agentes', label: 'Agentes' },
+                  { id: 'obranueva', label: 'Obra N.' },
+                  { id: 'staff', label: 'Staff' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setLigaTab(t.id)}
+                    className={cn(
+                      'px-3 py-[5px] rounded-md text-[11px] font-bold transition',
+                      ligaTab === t.id
+                        ? 'bg-white dark:bg-rk-ink-card shadow-sm font-extrabold'
+                        : 'text-rk-ink/45 dark:text-rk-cream/45'
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-rk-ink-card border border-black/[0.07] dark:border-white/[0.08] rounded-xl overflow-hidden">
+              {ligaActiva.people.length === 0 ? (
+                <Vacio texto="Sin datos todavía." />
+              ) : (
+                <>
+                  {ligaActiva.people.slice(0, 7).map((u, i) => {
+                    const premio = premioDe(ligaTab, i + 1)
+                    const premiado = i + 1 <= (PRIZE_SPOTS[ligaTab] ?? 3)
+                    return (
+                      <div
+                        key={u.id}
+                        className={cn(
+                          'flex items-center gap-3 px-4 py-[9px] border-b border-black/[0.055] dark:border-white/[0.06]',
+                          !premiado && 'bg-black/[0.015] dark:bg-white/[0.02]'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'w-5 text-center text-[11.5px] font-black',
+                            i === 0
+                              ? 'text-rk-orange'
+                              : 'text-rk-ink/30 dark:text-rk-cream/30'
+                          )}
+                        >
+                          {i + 1}
+                        </span>
+                        <span
+                          className={cn(
+                            'flex-1 text-[12.5px] truncate',
+                            premiado
+                              ? 'font-bold'
+                              : 'font-semibold text-rk-ink/55 dark:text-rk-cream/55'
+                          )}
+                        >
+                          {u.name}
+                        </span>
+                        {premio && (
+                          <span className="text-[9.5px] font-bold text-rk-ink/35 dark:text-rk-cream/35 truncate max-w-[110px]">
+                            🏅 {premio.nombre}
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            'text-[13px] font-black tabular-nums w-11 text-right',
+                            !premiado && 'text-rk-ink/55 dark:text-rk-cream/55'
+                          )}
+                        >
+                          {formatPoints(u.points || 0)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  <button
+                    onClick={() => setOpenBoard(ligaTab)}
+                    className="w-full py-2.5 text-[11.5px] font-extrabold text-rk-orange hover:bg-rk-orange/[0.06] transition"
+                  >
+                    Ver los {ligaActiva.people.length} ›
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <Seccion titulo="Equipos" className="mt-7">
+            {teams.length === 0 ? (
+              <Vacio texto="No hay equipos creados todavía." />
+            ) : (
+              teams.map((t, i) => (
+                <div
+                  key={t.id}
+                  className={cn(
+                    'px-4 py-[11px]',
+                    i < teams.length - 1 &&
+                      'border-b border-black/[0.055] dark:border-white/[0.06]'
+                  )}
+                >
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[12.5px] font-extrabold truncate pr-2">
+                      {t.name}
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[12.5px] font-black tabular-nums',
+                        i === 0 && 'text-rk-orange'
+                      )}
+                    >
+                      {formatPoints(t.totalPoints || 0)}
+                    </span>
+                  </div>
+                  <div className="h-1 rounded-full bg-black/[0.06] dark:bg-white/[0.08] mt-[7px] overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.max(2, ((t.totalPoints || 0) / maxTeamPts) * 100)}%`,
+                        backgroundColor: t.color ?? '#cf731b',
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </Seccion>
+
+          <Seccion
+            titulo="Sin sumar"
+            nota={`${totalPersonas - inactivos.length} de ${totalPersonas} activos`}
+            className="mt-7"
+          >
+            {inactivos.length === 0 ? (
+              <Vacio icono={<Check size={15} />} texto="Todo el mundo ha sumado esta semana." />
+            ) : (
+              <div className="flex flex-wrap gap-2 px-4 py-3.5">
+                {inactivos.map((u) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.05]"
+                    title={
+                      tsMs(u.lastActionAt)
+                        ? `Última acción: ${relativeDate(u.lastActionAt)}`
+                        : 'Nunca ha registrado nada'
+                    }
+                  >
+                    <Avatar name={u.name} size="sm" />
+                    <div className="leading-tight">
+                      <div className="text-[11px] font-extrabold">
+                        {u.name.split(' ')[0]}{' '}
+                        {u.name.split(' ')[1]?.charAt(0)
+                          ? `${u.name.split(' ')[1].charAt(0)}.`
+                          : ''}
+                      </div>
+                      <div className="text-[9px] font-semibold text-rk-ink/38 dark:text-rk-cream/38">
+                        {tsMs(u.lastActionAt) ? relativeDate(u.lastActionAt) : 'sin actividad'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Seccion>
         </div>
       </div>
-
-      {/* Sin actividad — ancho completo */}
-      <InactiveStrip people={inactivos} total={agents.length + staffLeague.length + obraNuevaLeague.length} />
 
       {openBoard && (
         <LeagueBoardDrawer
@@ -326,37 +449,29 @@ export default function Panel() {
 }
 
 // ====================================================================
-// KPI Card
+// Piezas del panel
 // ====================================================================
-function KpiCard({ label, value, sub, subUp = false, accent = false }) {
+function Kpi({ label, value, sub, accent = false, up = false }) {
   return (
-    <div
-      className={cn(
-        'p-4 rounded-2xl border',
-        accent
-          ? 'bg-rk-orange text-white border-transparent shadow-orange-glow-sm'
-          : 'bg-white dark:bg-rk-ink-card border-black/[0.04] dark:border-white/[0.05] shadow-soft'
-      )}
-    >
-      <div
-        className={cn(
-          'text-[9px] font-extrabold tracking-[2px]',
-          accent
-            ? 'text-white/85'
-            : 'text-rk-ink/60 dark:text-rk-cream/60'
-        )}
-      >
+    <div className="flex-1 py-4 px-1 relative first:pl-0">
+      <div className="absolute left-0 top-[20%] h-[60%] w-px bg-black/[0.08] dark:bg-white/[0.09] first:hidden" />
+      <div className="text-[9.5px] font-bold text-rk-ink/40 dark:text-rk-cream/40">
         {label}
       </div>
-      <div className="text-3xl font-black mt-1.5 -tracking-wide">{value}</div>
       <div
         className={cn(
-          'text-[10.5px] mt-0.5',
-          accent
-            ? 'text-white/85'
-            : subUp
+          'text-[30px] font-black tracking-tight leading-none mt-1',
+          accent && 'text-rk-orange'
+        )}
+      >
+        {value}
+      </div>
+      <div
+        className={cn(
+          'text-[10.5px] font-semibold mt-1.5',
+          up
             ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-            : 'text-rk-ink/60 dark:text-rk-cream/60'
+            : 'text-rk-ink/35 dark:text-rk-cream/35'
         )}
       >
         {sub}
@@ -365,58 +480,75 @@ function KpiCard({ label, value, sub, subUp = false, accent = false }) {
   )
 }
 
-// ====================================================================
-// Sección con cabecera (tag + título + badge opcional)
-// ====================================================================
-function PanelSection({ tag, title, badge, children }) {
+// Sección con el título FUERA del contenedor
+function Seccion({ titulo, nota, enlace, onEnlace, className, children }) {
   return (
-    <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-5 border border-black/[0.04] dark:border-white/[0.05] shadow-soft">
-      <div className="flex items-center mb-3.5">
-        <div>
-          <div className="text-[9px] font-extrabold tracking-[2px] text-rk-orange">
-            {tag}
-          </div>
-          <div className="text-base font-black mt-0.5">{title}</div>
-        </div>
-        {badge && (
-          <div className="ml-auto px-3 py-1 bg-rk-orange/10 text-rk-orange rounded-full text-[11px] font-extrabold">
-            {badge}
-          </div>
+    <div className={className}>
+      <div className="flex items-baseline mb-2.5">
+        <h2 className="text-[15.5px] font-black tracking-tight">{titulo}</h2>
+        {nota && (
+          <span className="text-[11.5px] font-semibold text-rk-ink/38 dark:text-rk-cream/38 ml-2.5">
+            {nota}
+          </span>
+        )}
+        {enlace && (
+          <button
+            onClick={onEnlace}
+            className="ml-auto text-[11.5px] font-bold text-rk-orange"
+          >
+            {enlace}
+          </button>
         )}
       </div>
-      {children}
+      <div className="bg-white dark:bg-rk-ink-card border border-black/[0.07] dark:border-white/[0.08] rounded-xl overflow-hidden">
+        {children}
+      </div>
     </div>
   )
 }
 
-// ====================================================================
-// Pendientes — acciones + facturaciones mezcladas
-// ====================================================================
-function PendingPanel({ pending, adminUid }) {
+function Vacio({ icono, texto }) {
   return (
-    <PanelSection
-      tag="POR REVISAR"
-      title="Pendientes"
-      badge={
-        pending.length === 0 ? null : `${pending.length} esperando`
-      }
-    >
-      {pending.length === 0 ? (
-        <div className="text-sm text-rk-ink/50 dark:text-rk-cream/50 py-10 text-center font-semibold">
-          ✨ Todo al día. No hay nada por revisar.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {pending.map((p) => (
-            <PendingItem key={p.id} item={p} adminUid={adminUid} />
-          ))}
-        </div>
-      )}
-    </PanelSection>
+    <div className="flex items-center justify-center gap-2 py-9 text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
+      {icono}
+      {texto}
+    </div>
   )
 }
 
-function PendingItem({ item, adminUid }) {
+function ActivityRow({ item, ultimo }) {
+  const negative = (item.points || 0) < 0
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 px-4 py-[11px]',
+        !ultimo && 'border-b border-black/[0.055] dark:border-white/[0.06]'
+      )}
+    >
+      <Avatar name={item.userName} size="sm" />
+      <div className="flex-1 min-w-0">
+        <div className="text-[12.5px] font-extrabold truncate">{item.userName}</div>
+        <div className="text-[11px] font-semibold text-rk-ink/42 dark:text-rk-cream/42 truncate">
+          {item.actionLabel}
+        </div>
+      </div>
+      <div className="text-[10.5px] font-semibold text-rk-ink/35 dark:text-rk-cream/35 whitespace-nowrap">
+        {relativeDate(item.reviewedAt)}
+      </div>
+      <div
+        className={cn(
+          'text-[14px] font-black tabular-nums w-14 text-right',
+          negative ? 'text-red-500' : 'text-rk-orange'
+        )}
+      >
+        {negative ? '' : '+'}
+        {item.points}
+      </div>
+    </div>
+  )
+}
+
+function PendingItem({ item, adminUid, ultimo = false }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
@@ -446,30 +578,35 @@ function PendingItem({ item, adminUid }) {
   const amount = `+${item.points}`
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-black/[0.02] dark:bg-white/[0.03] rounded-xl border border-black/[0.04] dark:border-white/[0.04]">
+    <div
+      className={cn(
+        'flex items-center gap-3 px-4 py-3',
+        !ultimo && 'border-b border-black/[0.055] dark:border-white/[0.06]'
+      )}
+    >
       <Avatar name={item.userName} size="sm" />
       <div className="flex-1 min-w-0">
-        <div className="font-extrabold text-sm truncate">{item.userName}</div>
-        <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60 mt-0.5 truncate">
+        <div className="font-extrabold text-[13px] truncate">{item.userName}</div>
+        <div className="text-[11px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 mt-0.5 truncate">
           {meta}
         </div>
       </div>
-      <div className="font-black text-rk-orange whitespace-nowrap text-base">
+      <div className="font-black text-rk-orange whitespace-nowrap text-[15px]">
         {amount}
       </div>
       <button
         onClick={handleReject}
         disabled={busy}
-        className="px-3 py-2 bg-red-500/10 text-red-500 rounded-lg text-xs font-extrabold hover:bg-red-500/15 transition disabled:opacity-50 flex items-center gap-1"
+        className="px-2.5 py-1.5 text-red-500 rounded-lg text-[11.5px] font-bold hover:bg-red-500/[0.08] transition disabled:opacity-40"
       >
-        <X size={13} /> Rechazar
+        Rechazar
       </button>
       <button
         onClick={handleApprove}
         disabled={busy}
-        className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-extrabold shadow-md shadow-emerald-500/25 hover:bg-emerald-600 transition disabled:opacity-50 flex items-center gap-1"
+        className="px-3.5 py-1.5 bg-rk-ink dark:bg-rk-cream text-rk-cream dark:text-rk-ink rounded-lg text-[11.5px] font-extrabold hover:opacity-85 transition disabled:opacity-40"
       >
-        <Check size={13} /> Aprobar
+        Aprobar
       </button>
       {error && (
         <div className="text-red-500 text-xs ml-2 whitespace-nowrap">
@@ -480,129 +617,8 @@ function PendingItem({ item, adminUid }) {
   )
 }
 
-// ====================================================================
-// Ranking Top 5
-// ====================================================================
-function RankingMini({ competitors, tag, title, total, onOpen }) {
-  const hidden = total ? total - competitors.length : 0
-  return (
-    <PanelSection
-      tag={tag}
-      title={title}
-      badge={total ? `${total} en liga` : undefined}
-    >
-      {competitors.length === 0 ? (
-        <div className="text-sm text-rk-ink/50 dark:text-rk-cream/50 py-4">
-          Sin datos todavía.
-        </div>
-      ) : (
-        <>
-          <div className="flex flex-col gap-1.5">
-            {competitors.map((u, i) => (
-              <div
-                key={u.id}
-                className={cn(
-                  'flex items-center gap-2.5 px-3 py-2 bg-black/[0.02] dark:bg-white/[0.03] rounded-lg',
-                  i === 0 && 'border-l-4 border-rk-orange'
-                )}
-              >
-                <div
-                  className={cn(
-                    'w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0',
-                    i === 0
-                      ? 'bg-rk-orange text-white'
-                      : i < 3
-                      ? 'bg-black/[0.08] text-rk-ink dark:bg-white/10 dark:text-rk-cream'
-                      : 'bg-black/[0.05] text-rk-ink/60 dark:bg-white/[0.06] dark:text-rk-cream/60'
-                  )}
-                >
-                  {i + 1}
-                </div>
-                <span
-                  className={cn(
-                    'flex-1 text-xs font-extrabold truncate',
-                    i >= 3 && 'text-rk-ink/70 dark:text-rk-cream/70 font-bold'
-                  )}
-                >
-                  {u.name}
-                </span>
-                <span
-                  className={cn(
-                    'font-black text-sm whitespace-nowrap',
-                    i >= 3 && 'font-extrabold text-rk-ink/70 dark:text-rk-cream/70'
-                  )}
-                >
-                  {formatPoints(u.points || 0)}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {onOpen && (
-            <button
-              onClick={onOpen}
-              className="mt-2.5 w-full flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-extrabold text-rk-orange hover:bg-rk-orange/10 transition"
-            >
-              Ver clasificación completa
-              {hidden > 0 && ` (+${hidden})`}
-              <ChevronRight size={13} />
-            </button>
-          )}
-        </>
-      )}
-    </PanelSection>
-  )
-}
 
 
-// ====================================================================
-// Equipos — barras de progreso
-// ====================================================================
-function TeamsChart({ teams, maxPts }) {
-  return (
-    <PanelSection tag="RENDIMIENTO" title="Por equipos">
-      {teams.length === 0 ? (
-        <div className="text-sm text-rk-ink/50 dark:text-rk-cream/50 py-4">
-          No hay equipos creados todavía.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {teams.map((t, i) => (
-            <div key={t.id}>
-              <div className="flex justify-between mb-1">
-                <span className="font-extrabold text-xs truncate pr-2">
-                  {t.name}
-                </span>
-                <span
-                  className={cn(
-                    'font-black text-xs whitespace-nowrap',
-                    i === 0 && 'text-rk-orange'
-                  )}
-                >
-                  {formatPoints(t.totalPoints || 0)} pts
-                </span>
-              </div>
-              <div className="h-2 bg-black/[0.05] dark:bg-white/[0.06] rounded-full overflow-hidden">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all duration-700',
-                    i === 0 ? 'bg-rk-orange' : 'bg-rk-ink dark:bg-rk-cream/80'
-                  )}
-                  style={{
-                    width: `${Math.max(
-                      2,
-                      ((t.totalPoints || 0) / maxPts) * 100
-                    )}%`,
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </PanelSection>
-  )
-}
 
 // ====================================================================
 // Evolución de puntos por día (últimos 14 días)
@@ -611,164 +627,66 @@ function DailyChart({ series }) {
   const max = Math.max(1, ...series.map((d) => d.points))
   const total = series.reduce((acc, d) => acc + d.points, 0)
   const activos = series.filter((d) => d.points > 0).length
-
   const DAY_LETTER = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
 
-  return (
-    <PanelSection
-      tag="RITMO"
-      title="Puntos por día"
-      badge={`${formatPoints(total)} pts · 14 días`}
-    >
-      {total === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-rk-ink/50 dark:text-rk-cream/50 py-6 justify-center font-semibold">
-          <BarChart3 size={16} />
-          Todavía no hay puntos aprobados en las últimas dos semanas.
-        </div>
-      ) : (
-        <>
-          <div className="flex items-stretch gap-1.5 h-32">
-            {series.map((d, i) => {
-              const isToday = i === series.length - 1
-              const pct = (d.points / max) * 100
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
-                  <div className="w-full flex-1 flex items-end relative">
-                    {d.points > 0 && (
-                      <span className="absolute -top-4 left-0 right-0 text-center text-[9px] font-black text-rk-ink/50 dark:text-rk-cream/50 opacity-0 group-hover:opacity-100 transition">
-                        {d.points}
-                      </span>
-                    )}
-                    <div
-                      className={cn(
-                        'w-full rounded-t-md transition-all duration-500',
-                        isToday
-                          ? 'bg-rk-orange'
-                          : d.points > 0
-                          ? 'bg-rk-ink/75 dark:bg-rk-cream/70'
-                          : 'bg-black/[0.06] dark:bg-white/[0.07]'
-                      )}
-                      style={{ height: `${Math.max(d.points > 0 ? 6 : 3, pct)}%` }}
-                    />
-                  </div>
-                  <span
-                    className={cn(
-                      'text-[9px] font-bold',
-                      isToday
-                        ? 'text-rk-orange'
-                        : 'text-rk-ink/40 dark:text-rk-cream/40'
-                    )}
-                  >
-                    {DAY_LETTER[d.date.getDay()]}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-          <div className="mt-3 pt-3 border-t border-black/[0.04] dark:border-white/[0.05] text-[11px] font-semibold text-rk-ink/50 dark:text-rk-cream/50">
-            {activos} {activos === 1 ? 'día' : 'días'} con actividad ·{' '}
-            {formatPoints(Math.round(total / 14))} pts/día de media
-          </div>
-        </>
-      )}
-    </PanelSection>
-  )
-}
+  if (total === 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-8 text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
+        <BarChart3 size={15} />
+        Sin puntos aprobados en las últimas dos semanas.
+      </div>
+    )
+  }
 
-// ====================================================================
-// Actividad reciente — últimos movimientos aprobados
-// ====================================================================
-function ActivityFeed({ items }) {
   return (
-    <PanelSection tag="EL PULSO" title="Actividad reciente">
-      {items.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-rk-ink/50 dark:text-rk-cream/50 py-6 justify-center font-semibold">
-          <Activity size={16} />
-          Aún no hay movimientos aprobados.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          {items.map((r) => {
-            const negative = (r.points || 0) < 0
-            return (
-              <div
-                key={r.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.03]"
-              >
-                <Avatar name={r.userName} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold truncate">{r.userName}</div>
-                  <div className="text-[11px] text-rk-ink/55 dark:text-rk-cream/55 truncate">
-                    {r.actionLabel}
-                  </div>
-                </div>
-                <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 whitespace-nowrap">
-                  {relativeDate(r.reviewedAt)}
-                </div>
+    <>
+      <div className="flex items-stretch gap-1.5 h-24">
+        {series.map((d, i) => {
+          const isToday = i === series.length - 1
+          const pct = (d.points / max) * 100
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+              <div className="w-full flex-1 flex items-end relative">
+                {d.points > 0 && (
+                  <span className="absolute -top-4 left-0 right-0 text-center text-[9px] font-black text-rk-ink/45 dark:text-rk-cream/45 opacity-0 group-hover:opacity-100 transition">
+                    {d.points}
+                  </span>
+                )}
                 <div
                   className={cn(
-                    'text-sm font-black tabular-nums w-14 text-right',
-                    negative ? 'text-red-500' : 'text-rk-orange'
+                    'w-full rounded-t-[3px] transition-all duration-500',
+                    isToday
+                      ? 'bg-rk-orange'
+                      : d.points > 0
+                      ? 'bg-rk-ink/[0.17] dark:bg-rk-cream/20'
+                      : 'bg-black/[0.05] dark:bg-white/[0.06]'
                   )}
-                >
-                  {negative ? '' : '+'}
-                  {r.points}
-                </div>
+                  style={{ height: `${Math.max(d.points > 0 ? 5 : 2, pct)}%` }}
+                />
               </div>
-            )
-          })}
-        </div>
-      )}
-    </PanelSection>
-  )
-}
-
-// ====================================================================
-// Sin actividad esta semana — para dar un toque a quien toca
-// ====================================================================
-function InactiveStrip({ people, total }) {
-  const activos = total - people.length
-
-  return (
-    <PanelSection
-      tag="A QUIÉN DAR UN TOQUE"
-      title="Sin sumar esta semana"
-      badge={`${activos}/${total} activos`}
-    >
-      {people.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 py-4 justify-center font-bold">
-          <Check size={16} />
-          ¡Todo el mundo ha sumado esta semana!
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {people.map((u) => {
-            const ms = tsMs(u.lastActionAt)
-            return (
-              <div
-                key={u.id}
-                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.05]"
-                title={
-                  ms
-                    ? `Última acción: ${relativeDate(u.lastActionAt)}`
-                    : 'Nunca ha registrado nada'
-                }
+              <span
+                className={cn(
+                  'text-[8.5px] font-bold',
+                  isToday
+                    ? 'text-rk-orange'
+                    : 'text-rk-ink/28 dark:text-rk-cream/28'
+                )}
               >
-                <Avatar name={u.name} size="sm" />
-                <div className="leading-tight">
-                  <div className="text-[11.5px] font-extrabold">{u.name}</div>
-                  <div className="text-[9.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45">
-                    {ms ? relativeDate(u.lastActionAt) : 'sin actividad'}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </PanelSection>
+                {DAY_LETTER[d.date.getDay()]}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <div className="border-t border-black/[0.08] dark:border-white/[0.09] mt-2.5 pt-2.5 text-[11px] font-semibold text-rk-ink/38 dark:text-rk-cream/38">
+        {activos} {activos === 1 ? 'día' : 'días'} con actividad ·{' '}
+        {formatPoints(Math.round(total / 14))} pts/día de media
+      </div>
+    </>
   )
 }
+
+
 
 // ====================================================================
 // Clasificación completa de una liga (panel lateral)
@@ -788,7 +706,7 @@ function LeagueBoardDrawer({ league, onClose }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[520px] h-full bg-rk-cream dark:bg-rk-ink overflow-y-auto shadow-2xl"
+        className="w-full max-w-[520px] h-full bg-rk-cream dark:bg-rk-ink overflow-y-auto border-l border-black/[0.06] dark:border-white/[0.08]"
       >
         {/* Cabecera */}
         <div className="sticky top-0 z-10 bg-rk-cream/95 dark:bg-rk-ink/95 backdrop-blur border-b border-black/[0.06] dark:border-white/[0.06] px-6 py-5">
@@ -820,7 +738,7 @@ function LeagueBoardDrawer({ league, onClose }) {
               No hay participantes en esta liga.
             </div>
           ) : (
-            <div className="flex flex-col gap-1.5">
+            <div className="divide-y divide-black/[0.05] dark:divide-white/[0.06]">
               {people.map((u, i) => {
                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
                 const sinPuntos = (u.points || 0) === 0
@@ -828,11 +746,9 @@ function LeagueBoardDrawer({ league, onClose }) {
                   <div
                     key={u.id}
                     className={cn(
-                      'flex items-center gap-3 px-3.5 py-2.5 rounded-xl border',
-                      i === 0
-                        ? 'bg-rk-orange/[0.07] border-rk-orange/25'
-                        : 'bg-white dark:bg-rk-ink-card border-black/[0.04] dark:border-white/[0.05]',
-                      sinPuntos && 'opacity-60'
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl',
+                      i === 0 && 'bg-rk-orange/[0.07]',
+                      sinPuntos && 'opacity-55'
                     )}
                   >
                     <div
