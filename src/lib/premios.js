@@ -1,8 +1,8 @@
 // ====================================================================
 // La Liga · Premios de la temporada
 // --------------------------------------------------------------------
-// Fuente: presentación de premios de gerencia. Los requisitos son por
-// TRIMESTRE. Si cambian los premios, se edita solo este archivo.
+// Fuente: presentación de premios de gerencia. Si cambian los premios o
+// sus requisitos, se edita solo este archivo.
 // ====================================================================
 
 // Cuántos puestos reparten premio en cada liga
@@ -13,8 +13,8 @@ export const PRIZE_SPOTS = {
   equipos: 2,
 }
 
-const REQ_AGENTES = '5 captaciones al trimestre (sin contar Gerencia ni Oficina)'
-const REQ_UNA = 'Mínimo 1 captación al trimestre'
+const REQ_AGENTES = 'Mínimo 5 captaciones (sin contar Gerencia ni Oficina)'
+const REQ_UNA = 'Mínimo 1 captación'
 
 export const PREMIOS = {
   agentes: [
