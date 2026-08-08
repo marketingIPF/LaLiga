@@ -1,324 +1,469 @@
 import { useState, useMemo } from 'react'
-import { Trophy, Users, User, Briefcase, Building2, ChevronDown } from 'lucide-react'
+import { Trophy, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
 import { getUserLeague, isCompetitor } from '../data/seedUsers'
+import { PRIZE_SPOTS, premioDe } from '../lib/premios'
 import { formatPoints, cn } from '../lib/utils'
 import Header from '../components/layout/Header'
-import GlassCard from '../components/ui/GlassCard'
 import Avatar from '../components/ui/Avatar'
-import RankBadge from '../components/ui/RankBadge'
-import { computeRank } from '../lib/constants'
 
 const TABS = [
-  { id: 'agentes', label: 'Agentes', Icon: User },
-  { id: 'obranueva', label: 'Obra Nueva', Icon: Building2 },
-  { id: 'staff', label: 'Staff', Icon: Briefcase },
-  { id: 'equipos', label: 'Equipos', Icon: Users },
+  { id: 'agentes', label: 'Agentes' },
+  { id: 'obranueva', label: 'Obra N.' },
+  { id: 'staff', label: 'Staff' },
+  { id: 'equipos', label: 'Equipos' },
 ]
 
-// Ligas individuales (todas menos 'equipos')
 const LEAGUE_TABS = ['agentes', 'obranueva', 'staff']
-
-// Cuántos puestos reparten premio en cada liga
-const PRIZE_SPOTS = { agentes: 5, obranueva: 2, staff: 3 }
+const AVATARES_VISIBLES = 5
 
 export default function Ranking() {
   const { profile } = useAuth()
-  const { users, topLifetime } = useUsers()
+  const { users } = useUsers()
   const { groups } = useGroups()
 
-  // Pestaña inicial: la liga del propio usuario, si es una liga individual
   const myLeague = getUserLeague(profile)
   const [tab, setTab] = useState(
     LEAGUE_TABS.includes(myLeague) ? myLeague : 'agentes'
   )
 
-  // Ranking individual de la liga activa (memoizado por liga)
-  const leagueBoard = useMemo(() => {
+  const spots = PRIZE_SPOTS[tab] ?? 3
+
+  // Clasificación individual de la liga activa
+  const board = useMemo(() => {
     if (!LEAGUE_TABS.includes(tab)) return []
     return users
       .filter((u) => getUserLeague(u) === tab)
       .sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
   }, [users, tab])
 
-  const groupsByPoints = useMemo(
+  const teams = useMemo(
     () => [...groups].sort((a, b) => (b.totalPoints ?? 0) - (a.totalPoints ?? 0)),
     [groups]
   )
 
-  return (
-    <div className="space-y-5 animate-fade-in">
-      <Header title="El Boletín" subtitle="Ranking" />
+  // Contexto de la liga
+  const contexto = useMemo(() => {
+    if (tab === 'equipos') {
+      return [
+        { valor: teams.length, texto: teams.length === 1 ? 'equipo' : 'equipos' },
+        { valor: PRIZE_SPOTS.equipos, texto: 'premiados' },
+      ]
+    }
+    return [
+      { valor: board.length, texto: 'compiten' },
+      { valor: spots, texto: 'premiados' },
+      {
+        valor: formatPoints(board.reduce((acc, u) => acc + (u.points ?? 0), 0)),
+        texto: 'pts',
+      },
+    ]
+  }, [tab, board, teams, spots])
 
-      {/* Tabs */}
-      <div className="glass rounded-2xl p-1 flex gap-1">
+  // Mi posición, para la barra fija (solo en mi propia liga)
+  const miFila = useMemo(() => {
+    if (tab !== myLeague) return null
+    const idx = board.findIndex((u) => u.id === profile?.id)
+    if (idx < 0) return null
+    return { pos: idx + 1, points: board[idx].points ?? 0 }
+  }, [tab, myLeague, board, profile?.id])
+
+  return (
+    <div className="animate-fade-in pb-24">
+      <Header title="Liga" subtitle="El Boletín" />
+
+      {/* Pestañas */}
+      <div className="flex gap-0.5 bg-black/[0.05] dark:bg-white/[0.07] rounded-xl p-[3px]">
         {TABS.map((t) => (
-          <ToggleTab
+          <button
             key={t.id}
-            active={tab === t.id}
             onClick={() => setTab(t.id)}
-            Icon={t.Icon}
-            label={t.label}
-          />
+            className={cn(
+              'flex-1 py-2 rounded-[9px] text-[10.5px] font-extrabold transition-all',
+              tab === t.id
+                ? 'bg-white dark:bg-rk-ink-card shadow-sm text-rk-ink dark:text-rk-cream'
+                : 'text-rk-ink/45 dark:text-rk-cream/45'
+            )}
+          >
+            {t.label}
+          </button>
         ))}
       </div>
 
+      {/* Contexto */}
+      <div className="flex gap-4 py-3 text-[10.5px] font-bold text-rk-ink/45 dark:text-rk-cream/45">
+        {contexto.map((c, i) => (
+          <span key={i}>
+            <b className="text-rk-ink dark:text-rk-cream">{c.valor}</b> {c.texto}
+          </span>
+        ))}
+      </div>
+      <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+
       {tab === 'equipos' ? (
-        <GroupsLeaderboard groups={groupsByPoints} users={users} />
+        <TablaEquipos teams={teams} users={users} myGroupId={profile?.groupId} />
       ) : (
-        <IndividualLeaderboard
-          competitors={leagueBoard}
-          topLifetime={topLifetime}
+        <TablaIndividual
+          board={board}
+          spots={spots}
+          league={tab}
           myId={profile?.id}
-          showRole={tab !== 'agentes'}
-          prizeSpots={PRIZE_SPOTS[tab] ?? 3}
         />
+      )}
+
+      {/* Tu posición, siempre visible */}
+      {miFila && (
+        <div
+          className="fixed left-3 right-3 z-30 flex items-center gap-2.5 rounded-2xl bg-rk-ink dark:bg-rk-ink-card text-rk-cream px-3.5 py-2.5 shadow-2xl border border-white/5"
+          style={{ bottom: 'calc(6.75rem + var(--safe-bottom, 0px))' }}
+        >
+          <span className="w-6 h-6 rounded-full bg-rk-orange text-white text-[10.5px] font-black flex items-center justify-center shrink-0">
+            {miFila.pos}
+          </span>
+          <span className="flex-1 text-[12px] font-extrabold truncate">
+            Tú · {profile?.name?.split(' ')[0]}
+          </span>
+          <span className="text-[13px] font-black text-rk-orange-light">
+            {formatPoints(miFila.points)} pts
+          </span>
+        </div>
       )}
     </div>
   )
 }
 
-function ToggleTab({ active, onClick, Icon, label }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl font-semibold text-[11px] transition-all',
-        active
-          ? 'bg-rk-orange text-white shadow-md shadow-rk-orange/20'
-          : 'text-rk-ink/60 dark:text-rk-cream/60'
-      )}
-    >
-      <Icon size={15} />
-      {label}
-    </button>
-  )
-}
+// ====================================================================
+// Clasificación individual
+// ====================================================================
+function TablaIndividual({ board, spots, league, myId }) {
+  if (board.length === 0) return <VacioEstado texto="Aún no hay datos para mostrar" />
 
-function IndividualLeaderboard({ competitors, topLifetime, myId, showRole = false, prizeSpots = 3 }) {
-  if (competitors.length === 0)
-    return <EmptyState text="Aún no hay datos para mostrar" />
+  const [primero, segundo, tercero, ...resto] = board
+  const ultimoPremiado = board[spots - 1]
 
-  const [first, second, third, ...rest] = competitors
+  // Si el corte cae dentro del podio (ligas con 1 o 2 premios), el aviso de
+  // "te falta X" tiene que salir ahí: si no, nadie vería la frontera.
+  const faltanPara = (user, pos) => {
+    if (!user || pos <= spots || !ultimoPremiado) return null
+    return Math.max(1, (ultimoPremiado.points ?? 0) - (user.points ?? 0) + 1)
+  }
 
   return (
     <>
       {/* Podio */}
-      <div className="grid grid-cols-3 gap-2 items-end pt-4">
-        <PodiumSlot position={2} user={second} myId={myId} height="h-28" />
-        <PodiumSlot position={1} user={first} myId={myId} height="h-36" featured />
-        <PodiumSlot position={3} user={third} myId={myId} height="h-24" />
+      <div className="flex items-end justify-center gap-3.5 pt-4 pb-1">
+        <PodioHueco user={segundo} pos={2} league={league} faltan={faltanPara(segundo, 2)} />
+        <PodioHueco user={primero} pos={1} league={league} faltan={faltanPara(primero, 1)} destacado />
+        <PodioHueco user={tercero} pos={3} league={league} faltan={faltanPara(tercero, 3)} />
       </div>
 
-      {/* Aviso de zona de premio */}
-      {competitors.length > 1 && (
-        <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5 bg-amber-400/[0.14] border border-dashed border-amber-400/45">
-          <span className="text-base">🏅</span>
-          <span className="text-[11.5px] font-extrabold text-amber-700 dark:text-amber-300">
-            {prizeSpots === 1
-              ? 'El primer puesto se lleva premio'
-              : `Los ${prizeSpots} primeros se llevan premio`}
-          </span>
-        </div>
-      )}
+      <div className="h-px bg-black/[0.075] dark:bg-white/[0.09] mt-2" />
 
-      {/* Resto del ranking, con la línea de corte de premio */}
-      <div className="space-y-2">
-        {rest.map((u, idx) => {
-          const position = idx + 4
-          // La línea va justo antes del primer puesto sin premio
-          const showCut = position === prizeSpots + 1
-          return (
-            <div key={u.id} className="space-y-2">
-              {showCut && (
-                <div className="flex items-center gap-2.5 pt-1 pb-0.5">
-                  <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
-                  <span className="text-[9px] font-black tracking-[1.5px] text-rk-ink/35 dark:text-rk-cream/35">
-                    CORTE DE PREMIO
-                  </span>
-                  <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
-                </div>
-              )}
-              <RankRow
-                position={position}
-                user={u}
-                topLifetime={topLifetime}
-                isMe={u.id === myId}
-                showRole={showRole}
-              />
-            </div>
-          )
-        })}
-      </div>
+      {/* Resto */}
+      {resto.map((u, i) => {
+        const pos = i + 4
+        const corte = pos === spots + 1
+        const premio = pos <= spots ? premioDe(league, pos) : null
+        const faltan =
+          !premio && ultimoPremiado
+            ? Math.max(1, (ultimoPremiado.points ?? 0) - (u.points ?? 0) + 1)
+            : null
+        return (
+          <div key={u.id}>
+            {corte && <LineaCorte />}
+            <Fila
+              pos={pos}
+              user={u}
+              premio={premio}
+              faltan={pos === spots + 1 ? faltan : null}
+              isMe={u.id === myId}
+              sinPuntos={(u.points ?? 0) === 0}
+            />
+            {i < resto.length - 1 && (
+              <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+            )}
+          </div>
+        )
+      })}
     </>
   )
 }
 
-function PodiumSlot({ position, user, myId, height, featured }) {
-  if (!user) return <div />
-  const medals = { 1: '🥇', 2: '🥈', 3: '🥉' }
-  const isMe = user.id === myId
+function PodioHueco({ user, pos, league, faltan = null, destacado = false }) {
+  if (!user) return <div className="flex-1 max-w-[92px]" />
+  const medalla = pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉'
+  const anillo =
+    pos === 1
+      ? '0 0 0 3px #e0a021, 0 5px 14px rgba(207,115,27,.3)'
+      : pos === 2
+      ? '0 0 0 2.5px #b9b9b9'
+      : '0 0 0 2.5px #c88a4b'
+  const premio = premioDe(league, pos)
 
   return (
-    <div className="flex flex-col items-center">
-      <Avatar name={user.name} size={featured ? 'lg' : 'md'} />
-      <div className="text-center mt-2 px-1 min-w-0 w-full">
-        <div
+    <div className="flex flex-col items-center flex-1 max-w-[100px]">
+      <div className="relative">
+        <div style={{ boxShadow: anillo }} className="rounded-full">
+          <Avatar name={user.name} size={destacado ? 'lg' : 'md'} />
+        </div>
+        <span
           className={cn(
-            'text-xs font-bold truncate',
-            featured && 'text-sm',
-            isMe && 'text-rk-orange'
+            'absolute -bottom-1 -right-1',
+            destacado ? 'text-lg' : 'text-[15px]'
           )}
         >
-          {user.name.split(' ')[0]}
-        </div>
-        <div className="text-xs font-black mt-0.5">{formatPoints(user.points ?? 0)}</div>
+          {medalla}
+        </span>
       </div>
       <div
         className={cn(
-          'mt-2 w-full rounded-t-2xl flex items-start justify-center pt-2 text-3xl',
-          height,
-          featured
-            ? 'bg-gradient-to-b from-rk-orange to-rk-orange-dark text-white'
-            : 'bg-gradient-to-b from-rk-orange/30 to-rk-orange/10 dark:from-white/10 dark:to-white/5'
+          'font-extrabold mt-2.5 text-center leading-tight',
+          destacado ? 'text-[12px]' : 'text-[11px]'
         )}
       >
-        {medals[position]}
+        {user.name.split(' ')[0]}{' '}
+        {user.name.split(' ')[1]?.charAt(0)
+          ? `${user.name.split(' ')[1].charAt(0)}.`
+          : ''}
       </div>
+      <div
+        className={cn(
+          'font-black text-rk-orange mt-0.5',
+          destacado ? 'text-[15px]' : 'text-[13px]'
+        )}
+      >
+        {formatPoints(user.points ?? 0)}
+      </div>
+      {premio ? (
+        <div
+          className={cn(
+            'text-[8.5px] font-bold text-center mt-1 leading-tight px-0.5',
+            destacado
+              ? 'text-amber-700 dark:text-amber-400 font-extrabold'
+              : 'text-rk-ink/45 dark:text-rk-cream/45'
+          )}
+        >
+          {premio.nombre}
+        </div>
+      ) : faltan ? (
+        <div className="text-[8.5px] font-bold text-center mt-1 leading-tight px-0.5 text-rk-ink/35 dark:text-rk-cream/35">
+          a {formatPoints(faltan)} pts del premio
+        </div>
+      ) : null}
     </div>
   )
 }
 
-function RankRow({ position, user, topLifetime, isMe, showRole }) {
-  const rank = computeRank({
-    points: user.points ?? 0,
-    lifetimePoints: user.lifetimePoints ?? 0,
-    topLifetimeInAgency: topLifetime,
-  })
-
+function Fila({ pos, user, premio, faltan, isMe, sinPuntos }) {
   return (
     <div
       className={cn(
-        'glass rounded-2xl p-3 flex items-center gap-3',
-        isMe && 'ring-2 ring-rk-orange'
+        'flex items-center gap-2.5 py-2.5',
+        isMe && 'bg-rk-orange/[0.09] rounded-xl px-2 ring-1 ring-rk-orange/25',
+        sinPuntos && !isMe && 'opacity-55'
       )}
     >
-      <div className="w-7 text-center font-black text-sm text-rk-ink/50 dark:text-rk-cream/50">
-        {position}
-      </div>
+      <span
+        className={cn(
+          'w-[22px] text-center text-[12px] font-black shrink-0',
+          isMe ? 'text-rk-orange' : 'text-rk-ink/40 dark:text-rk-cream/40'
+        )}
+      >
+        {pos}
+      </span>
       <Avatar name={user.name} size="sm" />
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-bold truncate">
+        <div className="text-[12.5px] font-extrabold truncate">
           {user.name}
           {isMe && <span className="text-rk-orange ml-1">(tú)</span>}
         </div>
-        <div className="flex items-center gap-1.5 mt-1">
-          <RankBadge rankId={rank.id} size="sm" />
-          {showRole && (
-            <span className="text-[9px] font-bold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40">
-              {user.role === 'Codirector' ? 'Staff' : user.role}
-            </span>
-          )}
-        </div>
+        {premio ? (
+          <span className="inline-flex items-center gap-1 bg-amber-400/[0.18] text-amber-800 dark:text-amber-300 rounded-md px-1.5 py-[1px] text-[8.5px] font-extrabold mt-1">
+            🏅 {premio.nombre}
+          </span>
+        ) : faltan ? (
+          <div className="text-[9.5px] font-bold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+            a {formatPoints(faltan)} pts del puesto premiado
+          </div>
+        ) : null}
       </div>
-      <div className="text-right whitespace-nowrap">
-        <div className="text-sm font-black text-rk-orange">
-          {formatPoints(user.points ?? 0)}
-        </div>
-        <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
-          {formatPoints(user.lifetimePoints ?? 0)} hist.
-        </div>
-      </div>
+      <span className="text-[13px] font-black tabular-nums shrink-0">
+        {formatPoints(user.points ?? 0)}
+      </span>
     </div>
   )
 }
 
-function GroupsLeaderboard({ groups, users }) {
-  const [expandedId, setExpandedId] = useState(null)
+function LineaCorte() {
+  return (
+    <div className="flex items-center gap-2 py-2.5">
+      <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
+      <span className="text-[8.5px] font-black tracking-[1.3px] text-rk-ink/30 dark:text-rk-cream/30">
+        CORTE DE PREMIO
+      </span>
+      <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
+    </div>
+  )
+}
 
-  if (groups.length === 0)
-    return <EmptyState text="Aún no hay equipos configurados" />
+// ====================================================================
+// Clasificación de equipos
+// ====================================================================
+function TablaEquipos({ teams, users, myGroupId }) {
+  const [abierto, setAbierto] = useState(null)
+
+  if (teams.length === 0)
+    return <VacioEstado texto="Aún no hay equipos configurados" />
+
+  const spots = PRIZE_SPOTS.equipos
+  const maxPts = Math.max(1, ...teams.map((t) => t.totalPoints ?? 0))
+  const ultimoPremiado = teams[spots - 1]
 
   return (
-    <div className="space-y-3">
-      {groups.map((g, idx) => {
-        const isOpen = expandedId === g.id
-        const members = users
+    <>
+      {teams.map((g, i) => {
+        const pos = i + 1
+        const corte = pos === spots + 1
+        const premio = pos <= spots ? premioDe('equipos', pos) : null
+        const faltan =
+          !premio && ultimoPremiado
+            ? Math.max(1, (ultimoPremiado.totalPoints ?? 0) - (g.totalPoints ?? 0) + 1)
+            : null
+        const miembros = users
           .filter((u) => isCompetitor(u) && u.groupId === g.id)
           .sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+        const visibles = miembros.slice(0, AVATARES_VISIBLES)
+        const ocultos = miembros.length - visibles.length
+        const medalla = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : null
+        const abiertoEste = abierto === g.id
+        const esMio = g.id === myGroupId
+
         return (
-          <GlassCard key={g.id} className="!p-4">
+          <div key={g.id}>
+            {corte && <LineaCorte />}
             <button
-              onClick={() => setExpandedId(isOpen ? null : g.id)}
-              className="w-full flex items-center gap-4 text-left"
+              onClick={() => setAbierto(abiertoEste ? null : g.id)}
+              className={cn(
+                'w-full flex items-start gap-3 py-3 text-left',
+                esMio && 'bg-rk-orange/[0.06] rounded-xl px-2'
+              )}
             >
               <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl text-white font-black shrink-0"
+                className="w-[38px] h-[38px] rounded-xl shrink-0"
                 style={{ backgroundColor: g.color ?? '#cf731b' }}
-              >
-                {idx + 1}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold truncate">{g.name}</div>
-                <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
-                  {members.length} {members.length === 1 ? 'miembro' : 'miembros'} · toca para ver
-                </div>
-              </div>
-              <div className="text-right whitespace-nowrap">
-                <div className="text-lg font-black text-rk-orange">
-                  {formatPoints(g.totalPoints)}
-                </div>
-                <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
-                  pts del periodo
-                </div>
-              </div>
-              <ChevronDown
-                size={18}
-                className={cn(
-                  'shrink-0 text-rk-ink/40 dark:text-rk-cream/40 transition-transform duration-200',
-                  isOpen && 'rotate-180'
-                )}
               />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-black truncate">
+                  {g.name} {medalla}
+                  {esMio && <span className="text-rk-orange ml-1 text-[11px]">(tu equipo)</span>}
+                </div>
+
+                {premio ? (
+                  <span className="inline-flex items-center gap-1 bg-amber-400/[0.18] text-amber-800 dark:text-amber-300 rounded-md px-1.5 py-[1px] text-[8.5px] font-extrabold mt-1">
+                    🏅 {premio.nombre}
+                  </span>
+                ) : faltan ? (
+                  <div className="text-[9.5px] font-bold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+                    a {formatPoints(faltan)} pts del puesto premiado
+                  </div>
+                ) : null}
+
+                {/* Barra relativa al líder */}
+                <div className="h-[5px] rounded-full bg-black/[0.07] dark:bg-white/[0.09] mt-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.max(3, ((g.totalPoints ?? 0) / maxPts) * 100)}%`,
+                      backgroundColor: g.color ?? '#cf731b',
+                    }}
+                  />
+                </div>
+
+                {/* Avatares apilados */}
+                <div className="flex items-center mt-2">
+                  {visibles.map((m, idx) => (
+                    <div
+                      key={m.id}
+                      className="rounded-full ring-2 ring-rk-cream dark:ring-rk-ink"
+                      style={{ marginLeft: idx === 0 ? 0 : -7 }}
+                    >
+                      <Avatar name={m.name} size="sm" />
+                    </div>
+                  ))}
+                  {ocultos > 0 && (
+                    <div
+                      className="w-[26px] h-[26px] rounded-full bg-black/[0.09] dark:bg-white/[0.12] text-rk-ink/55 dark:text-rk-cream/55 text-[9px] font-black flex items-center justify-center ring-2 ring-rk-cream dark:ring-rk-ink"
+                      style={{ marginLeft: -7 }}
+                    >
+                      +{ocultos}
+                    </div>
+                  )}
+                  <ChevronDown
+                    size={14}
+                    className={cn(
+                      'ml-auto text-rk-ink/30 dark:text-rk-cream/30 transition-transform',
+                      abiertoEste && 'rotate-180'
+                    )}
+                  />
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-[15px] font-black text-rk-orange tabular-nums">
+                  {formatPoints(g.totalPoints ?? 0)}
+                </div>
+                <div className="text-[9px] font-bold text-rk-ink/40 dark:text-rk-cream/40">
+                  pts
+                </div>
+              </div>
             </button>
 
-            {isOpen && (
-              <div className="mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.08] space-y-1.5 animate-fade-in">
-                {members.length === 0 ? (
-                  <div className="text-xs text-rk-ink/50 dark:text-rk-cream/50 py-2 text-center">
+            {/* Miembros */}
+            {abiertoEste && (
+              <div className="pb-3 pl-[50px] space-y-1 animate-fade-in">
+                {miembros.length === 0 ? (
+                  <p className="text-[11px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 py-1">
                     Este equipo aún no tiene miembros.
-                  </div>
+                  </p>
                 ) : (
-                  members.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2.5 px-1 py-1">
-                      <Avatar name={m.name} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold truncate">{m.name}</div>
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40">
-                          {m.role === 'Codirector' ? 'Staff' : m.role}
-                        </div>
-                      </div>
-                      <div className="text-xs font-black text-rk-orange whitespace-nowrap">
-                        {formatPoints(m.points ?? 0)} pts
-                      </div>
+                  miembros.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2 py-1">
+                      <span className="flex-1 text-[11.5px] font-bold truncate">
+                        {m.name}
+                      </span>
+                      <span className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
+                        {m.role === 'Codirector' ? 'Staff' : m.role}
+                      </span>
+                      <span className="text-[11.5px] font-black text-rk-orange tabular-nums w-11 text-right">
+                        {formatPoints(m.points ?? 0)}
+                      </span>
                     </div>
                   ))
                 )}
               </div>
             )}
-          </GlassCard>
+
+            {!abiertoEste && (
+              <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+            )}
+          </div>
         )
       })}
-    </div>
+    </>
   )
 }
 
-function EmptyState({ text }) {
+function VacioEstado({ texto }) {
   return (
-    <GlassCard className="text-center py-10">
-      <Trophy size={32} className="mx-auto text-rk-ink/30 dark:text-rk-cream/30 mb-3" />
-      <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60">{text}</p>
-    </GlassCard>
+    <div className="text-center py-14">
+      <Trophy
+        size={30}
+        className="mx-auto text-rk-ink/25 dark:text-rk-cream/25 mb-3"
+      />
+      <p className="text-sm font-semibold text-rk-ink/55 dark:text-rk-cream/55">
+        {texto}
+      </p>
+    </div>
   )
 }
