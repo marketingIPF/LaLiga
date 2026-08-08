@@ -107,7 +107,7 @@ export default function Perfil() {
       />
 
       <p className="text-center text-[9.5px] font-bold uppercase tracking-wider text-rk-ink/25 dark:text-rk-cream/25 pt-6">
-        RK Palanca Fontestad · La Liga
+        RK Palanca Fontestad · La Liga V 1.3
       </p>
     </div>
   )
