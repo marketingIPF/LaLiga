@@ -23,7 +23,7 @@ const GRUPOS = [
     titulo: 'La Liga',
     items: [
       { to: '/panel', label: 'Resumen', Icon: LayoutDashboard, end: true },
-      { to: '/aprobaciones', label: 'Aprobaciones', Icon: CheckCircle2, badge: 'pending' },
+      { to: '/panel/aprobaciones', label: 'Aprobaciones', Icon: CheckCircle2, badge: 'pending' },
       { to: '/panel/puntos', label: 'Cargar puntos', Icon: ClipboardList },
     ],
   },
