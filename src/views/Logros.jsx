@@ -2,16 +2,16 @@ import { useMemo } from 'react'
 import { useUsers } from '../hooks/useUsers'
 import { useActionRequests } from '../hooks/useActionRequests'
 import { isCompetitor } from '../data/seedUsers'
-import { formatPoints } from '../lib/utils'
+import { formatPoints, cn } from '../lib/utils'
 import Header from '../components/layout/Header'
-import GlassCard from '../components/ui/GlassCard'
 import Avatar from '../components/ui/Avatar'
+import { Trophy } from 'lucide-react'
 
-// Cuántas acciones aprobadas leemos para calcular los logros. Antes se
-// descargaba el histórico COMPLETO, que crece sin parar (sobre todo con las
-// cargas masivas del CRM) y hacía lenta esta pantalla. Con el índice de
-// Firestore ya creado, pedimos solo las más recientes.
+// Cuántas acciones aprobadas leemos para calcular los logros. Sin límite se
+// descargaba el histórico COMPLETO, que crece sin parar con las cargas del
+// CRM. Con el índice de Firestore ya creado, pedimos solo las recientes.
 const MAX_REQUESTS = 500
+const AVATARES_VISIBLES = 5
 
 // ====================================================================
 // Definición de logros
@@ -75,7 +75,6 @@ const BADGES = [
   },
 ]
 
-// Mapa acción → métrica
 const METRIC_OF = {
   llamada_prospeccion: 'prospeccion',
   llamada_cortesia: 'cortesia',
@@ -110,7 +109,6 @@ function toDate(value) {
   return isNaN(d.getTime()) ? null : d
 }
 
-// Clave año+semana para medir constancia por semanas
 function weekKey(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
   const day = d.getUTCDay() || 7
@@ -129,29 +127,23 @@ export default function Logros() {
   const { champions, badges } = useMemo(() => {
     if (competitors.length === 0) return { champions: [], badges: [] }
 
-    // Estadísticas por persona
     const stats = {}
     for (const r of requests) {
       if (!r.userId) continue
       if (!stats[r.userId]) stats[r.userId] = emptyStats()
       const s = stats[r.userId]
       s.total++
-
       const metric = METRIC_OF[r.actionType]
       if (metric) {
         s[metric]++
-        // La suma total de toques es un agregado que carga administración,
-        // no cuenta para la variedad de acciones del Todoterreno.
         s.types.add(metric)
       }
-
       const d = toDate(r.createdAt)
       if (d) s.weeks.add(weekKey(d))
     }
 
     const byId = Object.fromEntries(competitors.map((u) => [u.id, u]))
 
-    // ---- CAMPEONES ----
     const champs = []
     for (const def of CHAMPIONS) {
       if (def.metric === 'lifetime') {
@@ -173,7 +165,6 @@ export default function Logros() {
       }
     }
 
-    // ---- INSIGNIAS ----
     const badgeList = []
     for (const def of BADGES) {
       const holders = Object.entries(stats)
@@ -189,36 +180,52 @@ export default function Logros() {
   const isEmpty = champions.length === 0 && badges.length === 0
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="animate-fade-in pb-4">
       <Header title="Muro de Logros" subtitle="Wall of Fame" />
 
       {isEmpty ? (
-        <GlassCard className="text-center py-12">
-          <div className="text-5xl mb-3">🏆</div>
-          <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60">
-            Los logros se irán desbloqueando a medida que el equipo registre acciones.
+        <div className="text-center py-14">
+          <Trophy size={30} className="mx-auto text-rk-ink/25 dark:text-rk-cream/25 mb-3" />
+          <p className="text-sm font-semibold text-rk-ink/55 dark:text-rk-cream/55 px-6">
+            Los logros se irán desbloqueando a medida que el equipo registre
+            acciones.
           </p>
-        </GlassCard>
+        </div>
       ) : (
         <>
           {champions.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-[2px] text-rk-orange px-1">
-                Campeones del periodo
-              </h2>
-              {champions.map((a) => (
-                <ChampionCard key={a.id} achievement={a} />
+            <section>
+              <div className="flex gap-4 py-3 text-[10.5px] font-bold text-rk-ink/45 dark:text-rk-cream/45">
+                <span>
+                  <b className="text-rk-ink dark:text-rk-cream">{champions.length}</b>{' '}
+                  campeones activos
+                </span>
+              </div>
+              <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+              {champions.map((a, i) => (
+                <div key={a.id}>
+                  <FilaCampeon achievement={a} />
+                  {i < champions.length - 1 && (
+                    <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+                  )}
+                </div>
               ))}
             </section>
           )}
 
           {badges.length > 0 && (
-            <section className="space-y-3 pt-2">
-              <h2 className="text-xs font-bold uppercase tracking-[2px] text-rk-orange px-1">
+            <section className="mt-6">
+              <div className="text-[9.5px] font-black tracking-[1.7px] uppercase text-rk-orange px-0.5 pb-3">
                 Insignias desbloqueadas
-              </h2>
-              {badges.map((b) => (
-                <BadgeCard key={b.id} badge={b} />
+              </div>
+              <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+              {badges.map((b, i) => (
+                <div key={b.id}>
+                  <FilaInsignia badge={b} />
+                  {i < badges.length - 1 && (
+                    <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+                  )}
+                </div>
               ))}
             </section>
           )}
@@ -228,60 +235,65 @@ export default function Logros() {
   )
 }
 
-function ChampionCard({ achievement }) {
+function FilaCampeon({ achievement }) {
   return (
-    <GlassCard className="relative overflow-hidden">
-      <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-rk-orange/15 blur-2xl pointer-events-none" />
-      <div className="relative flex items-center gap-4">
-        <div className="text-4xl">{achievement.icon}</div>
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-wider text-rk-orange">
-            {achievement.label}
-          </div>
-          <div className="font-bold mt-0.5 truncate">{achievement.agent.name}</div>
-          <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">{achievement.stat}</div>
+    <div className="flex items-center gap-3.5 py-3">
+      <span className="text-2xl w-8 text-center shrink-0">{achievement.icon}</span>
+      <Avatar name={achievement.agent.name} size="sm" />
+      <div className="flex-1 min-w-0">
+        <div className="text-[10px] font-extrabold uppercase tracking-[1.1px] text-amber-700 dark:text-amber-400">
+          {achievement.label}
         </div>
-        <Avatar name={achievement.agent.name} size="md" />
+        <div className="text-[13px] font-black truncate mt-0.5">
+          {achievement.agent.name}
+        </div>
+        <div className="text-[10.5px] font-semibold text-rk-ink/50 dark:text-rk-cream/50">
+          {achievement.stat}
+        </div>
       </div>
-    </GlassCard>
+    </div>
   )
 }
 
-function BadgeCard({ badge }) {
-  const shown = badge.holders.slice(0, 6)
-  const rest = badge.holders.length - shown.length
+function FilaInsignia({ badge }) {
+  const visibles = badge.holders.slice(0, AVATARES_VISIBLES)
+  const ocultos = badge.holders.length - visibles.length
 
   return (
-    <GlassCard className="relative overflow-hidden">
+    <div className="py-3">
       <div className="flex items-start gap-3.5">
-        <div className="text-3xl shrink-0">{badge.icon}</div>
+        <span className="text-2xl w-8 text-center shrink-0">{badge.icon}</span>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-wider text-rk-orange">
-            {badge.label}
-          </div>
-          <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60 mt-0.5">
+          <div className="text-[13px] font-black">{badge.label}</div>
+          <div className="text-[10.5px] font-semibold text-rk-ink/50 dark:text-rk-cream/50 mt-0.5">
             {badge.description}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-            {shown.map((u) => (
+          <div className="flex items-center mt-2.5">
+            {visibles.map((u, idx) => (
               <div
                 key={u.id}
-                className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5"
+                className="rounded-full ring-2 ring-rk-cream dark:ring-rk-ink"
+                style={{ marginLeft: idx === 0 ? 0 : -7 }}
+                title={u.name}
               >
                 <Avatar name={u.name} size="sm" />
-                <span className="text-[11px] font-bold truncate max-w-[110px]">
-                  {u.name.split(' ')[0]}
-                </span>
               </div>
             ))}
-            {rest > 0 && (
-              <span className="text-[11px] font-bold text-rk-ink/50 dark:text-rk-cream/50 px-1">
-                +{rest} más
-              </span>
+            {ocultos > 0 && (
+              <div
+                className="w-[26px] h-[26px] rounded-full bg-black/[0.09] dark:bg-white/[0.12] text-rk-ink/55 dark:text-rk-cream/55 text-[9px] font-black flex items-center justify-center ring-2 ring-rk-cream dark:ring-rk-ink"
+                style={{ marginLeft: -7 }}
+              >
+                +{ocultos}
+              </div>
             )}
+            <span className="ml-2.5 text-[10px] font-bold text-rk-ink/40 dark:text-rk-cream/40">
+              {badge.holders.length}{' '}
+              {badge.holders.length === 1 ? 'persona' : 'personas'}
+            </span>
           </div>
         </div>
       </div>
-    </GlassCard>
+    </div>
   )
 }

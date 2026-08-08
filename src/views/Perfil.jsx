@@ -7,14 +7,12 @@ import { useTheme } from '../context/ThemeContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
 import { useRank } from '../hooks/useRank'
-import { formatPoints } from '../lib/utils'
+import { formatPoints, cn } from '../lib/utils'
 import Header from '../components/layout/Header'
-import GlassCard from '../components/ui/GlassCard'
 import Avatar from '../components/ui/Avatar'
-import RankBadge from '../components/ui/RankBadge'
 
 export default function Perfil() {
-  const { profile, isAdmin, signOut } = useAuth()
+  const { profile, signOut } = useAuth()
   const { theme, toggle } = useTheme()
   const { topLifetime } = useUsers()
   const { groups } = useGroups()
@@ -31,107 +29,130 @@ export default function Perfil() {
   if (!profile) return null
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <Header title="Mi perfil" subtitle="La Liga" />
+    <div className="animate-fade-in pb-4">
+      <Header title="Perfil" subtitle="La Liga RK" />
 
-      <GlassCard className="flex flex-col items-center text-center">
+      {/* Cabecera · avatar suelto sobre el fondo, sin caja */}
+      <div className="flex flex-col items-center text-center pt-3 pb-1">
         <Avatar name={profile.name} size="xl" />
-        <h2 className="text-xl font-black mt-3">{profile.name}</h2>
-        <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60">{profile.role}</p>
-        <div className="mt-3">
-          <RankBadge rankId={rank.id} size="lg" />
+        <h2 className="text-xl font-black mt-3.5 tracking-tight">
+          {profile.name}
+        </h2>
+        <p className="text-[12px] font-bold text-rk-ink/45 dark:text-rk-cream/45 mt-0.5">
+          {profile.role}
+        </p>
+        <div className="flex items-center gap-1.5 mt-2">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: rank.auraColor }} />
+          <span className="text-[12px] font-extrabold" style={{ color: rank.auraColor }}>
+            {rank.label}
+          </span>
         </div>
-      </GlassCard>
+      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Puntos actuales" value={formatPoints(profile.points)} />
-        <StatCard label="Histórico" value={formatPoints(profile.lifetimePoints)} />
+      {/* Stats en línea */}
+      <div className="mt-5 border-t border-black/[0.07] dark:border-white/[0.08]">
+        <div className="flex py-3.5">
+          <div className="flex-1 text-center">
+            <div className="text-lg font-black text-rk-orange">
+              {formatPoints(profile.points)}
+            </div>
+            <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+              Puntos
+            </div>
+          </div>
+          <div className="w-px my-1.5 bg-black/[0.07] dark:bg-white/[0.08]" />
+          <div className="flex-1 text-center">
+            <div className="text-lg font-black">
+              {formatPoints(profile.lifetimePoints)}
+            </div>
+            <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+              Histórico
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tu actividad */}
-      <button
+      <Fila
+        Icon={History}
+        label="Tu actividad"
+        sub="Todas tus acciones y su estado"
         onClick={() => navigate('/actividad')}
-        className="w-full active:scale-[0.99] transition-transform"
-      >
-        <GlassCard className="!p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
-            <History size={19} />
-          </div>
-          <div className="flex-1 min-w-0 text-left">
-            <div className="text-sm font-bold">Tu actividad</div>
-            <div className="text-xs text-rk-ink/55 dark:text-rk-cream/55">
-              Todas tus acciones y su estado
-            </div>
-          </div>
-          <ChevronRight size={18} className="text-rk-ink/25 dark:text-rk-cream/25 shrink-0" />
-        </GlassCard>
-      </button>
+        primero
+      />
 
-      {/* Info contacto */}
-      <GlassCard className="!p-0 overflow-hidden">
-        <InfoRow Icon={Mail} label={profile.email} />
-        {group && (
-          <>
-            <Divider />
-            <InfoRow Icon={Users} label={`Equipo: ${group.name}`} />
-          </>
-        )}
-      </GlassCard>
+      {/* Info de contacto */}
+      <Fila Icon={Mail} label={profile.email} />
+      {group && (
+        <Fila Icon={Users} label={group.name} sub="Tu equipo" />
+      )}
 
-      {/* Settings */}
-      <GlassCard className="!p-0 overflow-hidden">
-        <button onClick={toggle} className="w-full flex items-center gap-3 px-4 py-3.5">
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          <span className="text-sm font-semibold flex-1 text-left">
-            Tema {theme === 'dark' ? 'claro' : 'oscuro'}
-          </span>
-        </button>
-        <Divider />
-        <button
-          onClick={() => navigate('/cambiar-password')}
-          className="w-full flex items-center gap-3 px-4 py-3.5"
-        >
-          <KeyRound size={18} />
-          <span className="text-sm font-semibold flex-1 text-left">Cambiar contraseña</span>
-        </button>
-        <Divider />
-        <button
-          onClick={signOut}
-          className="w-full flex items-center gap-3 px-4 py-3.5 text-red-500"
-        >
-          <LogOut size={18} />
-          <span className="text-sm font-semibold flex-1 text-left">Cerrar sesión</span>
-        </button>
-      </GlassCard>
+      {/* Ajustes */}
+      <Fila
+        Icon={theme === 'dark' ? Sun : Moon}
+        label={`Tema ${theme === 'dark' ? 'claro' : 'oscuro'}`}
+        onClick={toggle}
+      />
+      <Fila
+        Icon={KeyRound}
+        label="Cambiar contraseña"
+        onClick={() => navigate('/cambiar-password')}
+      />
+      <Fila
+        Icon={LogOut}
+        label="Cerrar sesión"
+        onClick={signOut}
+        danger
+        ultimo
+      />
 
-      <p className="text-center text-[10px] font-semibold uppercase tracking-wider text-rk-ink/30 dark:text-rk-cream/30 pt-4">
-        RK Palanca Fontestad · La Liga v0.2
+      <p className="text-center text-[9.5px] font-bold uppercase tracking-wider text-rk-ink/25 dark:text-rk-cream/25 pt-6">
+        RK Palanca Fontestad · La Liga
       </p>
     </div>
   )
 }
 
-function StatCard({ label, value }) {
+function Fila({ Icon, label, sub, onClick, primero = false, ultimo = false, danger = false }) {
+  const Comp = onClick ? 'button' : 'div'
   return (
-    <GlassCard className="!p-4 text-center">
-      <div className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
-        {label}
-      </div>
-      <div className="text-2xl font-black mt-1 text-rk-orange">{value}</div>
-    </GlassCard>
+    <>
+      {primero && (
+        <div className="border-t border-black/[0.07] dark:border-white/[0.08]" />
+      )}
+      <Comp
+        onClick={onClick}
+        className={cn(
+          'w-full flex items-center gap-3 py-3.5 text-left',
+          onClick && 'active:opacity-60 transition-opacity'
+        )}
+      >
+        <Icon
+          size={18}
+          className={danger ? 'text-red-500' : 'text-rk-ink/55 dark:text-rk-cream/55'}
+        />
+        <div className="flex-1 min-w-0">
+          <div
+            className={cn(
+              'text-[13px] font-bold truncate',
+              danger && 'text-red-500'
+            )}
+          >
+            {label}
+          </div>
+          {sub && (
+            <div className="text-[10.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 mt-0.5">
+              {sub}
+            </div>
+          )}
+        </div>
+        {onClick && !danger && (
+          <ChevronRight size={16} className="text-rk-ink/20 dark:text-rk-cream/20 shrink-0" />
+        )}
+      </Comp>
+      {!ultimo && (
+        <div className="border-t border-black/[0.07] dark:border-white/[0.08]" />
+      )}
+    </>
   )
-}
-
-function InfoRow({ Icon, label }) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3.5">
-      <Icon size={18} className="text-rk-ink/60 dark:text-rk-cream/60" />
-      <span className="text-sm font-semibold truncate">{label}</span>
-    </div>
-  )
-}
-
-function Divider() {
-  return <div className="border-t border-black/5 dark:border-white/5" />
 }
