@@ -31,7 +31,7 @@ export const PREMIOS = {
   staff: [
     { pos: 1, nombre: 'Concierto en el Roig Arena', detalle: 'Asientos Johnnie Walker', requisito: REQ_UNA },
     { pos: 2, nombre: 'Partido de Euroliga en el Roig Arena', detalle: 'Asientos Johnnie Walker', requisito: REQ_UNA },
-    { pos: 3, nombre: 'Gafas Rayban o similares · o cena para 2', requisito: REQ_UNA },
+    { pos: 3, nombre: 'Gafas o Cena para 2', requisito: REQ_UNA },
   ],
   equipos: [
     { pos: 1, nombre: 'Comida un viernes + tarde libre' },
