@@ -97,6 +97,14 @@ export default function App() {
           <Route path="/panel/agentes" element={<PanelAgentes />} />
           <Route path="/panel/equipos" element={<PanelEquipos />} />
           <Route path="/panel/puntos" element={<PanelPuntos />} />
+          <Route
+            path="/panel/aprobaciones"
+            element={
+              <div className="max-w-[760px]">
+                <Aprobaciones />
+              </div>
+            }
+          />
         </Route>
       )}
 
