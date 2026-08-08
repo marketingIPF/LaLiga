@@ -126,15 +126,20 @@ export default function Dashboard() {
     }
   }, [users, league, profile?.id, profile?.points])
 
-  // Captaciones aprobadas (solo existen como acción en Obra Nueva y Staff;
-  // en Agentes las captaciones se llevan en el CRM, no en La Liga).
+  // Captaciones aprobadas. En Agentes, las entrevistas M1/M2/M3 SON las
+  // captaciones; en Obra Nueva y Staff son las captaciones M1/M2/M3.
   const captaciones = useMemo(
     () =>
-      requests.filter(
-        (r) => r.status === 'approved' && String(r.actionType).startsWith('captacion_')
-      ).length,
+      requests.filter((r) => {
+        if (r.status !== 'approved') return false
+        const tipo = String(r.actionType)
+        return tipo.startsWith('captacion_') || tipo.startsWith('entrevista_')
+      }).length,
     [requests]
   )
+
+  // Mínimo exigido según liga (Agentes: 5, solo para 1º y 2º)
+  const minCaptaciones = league === 'agentes' ? 5 : 1
 
   // ---- Racha: semanas consecutivas con alguna acción aprobada ----
   const streak = useMemo(() => {

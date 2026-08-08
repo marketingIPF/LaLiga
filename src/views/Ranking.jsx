@@ -51,13 +51,15 @@ export default function Ranking() {
     [groups]
   )
 
-  // Captaciones aprobadas por persona (solo existen como acción en Obra
-  // Nueva y Staff; las de los agentes se llevan en el CRM, fuera de la app).
+  // Captaciones aprobadas por persona.
+  //   · Agentes            → las entrevistas M1/M2/M3 SON sus captaciones
+  //   · Obra Nueva y Staff → captación M1/M2/M3
   const captacionesPorUsuario = useMemo(() => {
     const map = {}
     for (const r of aprobadas) {
       if (!r.userId) continue
-      if (String(r.actionType).startsWith('captacion_')) {
+      const tipo = String(r.actionType)
+      if (tipo.startsWith('captacion_') || tipo.startsWith('entrevista_')) {
         map[r.userId] = (map[r.userId] ?? 0) + 1
       }
     }
@@ -230,26 +232,17 @@ function TablaIndividual({ board, spots, league, myId, captaciones = {} }) {
 
 
 // Aviso del requisito de captaciones para los puestos premiados.
-// En Agentes no se puede comprobar (las captaciones viven en el CRM), así
-// que se muestra como recordatorio. En Obra Nueva y Staff sí se verifica.
+// En Agentes, las entrevistas M1/M2/M3 SON las captaciones (mínimo 5 para
+// el 1º y 2º). En Obra Nueva y Staff son las captaciones M1/M2/M3 (mínimo 1).
 function AvisoCaptaciones({ league, pos, spots, n = 0, compacto = false }) {
   if (pos > spots) return null
 
-  if (league === 'agentes') {
-    if (pos > 2) return null
-    return (
-      <div
-        className={cn(
-          'font-bold text-rk-ink/40 dark:text-rk-cream/40 leading-tight',
-          compacto ? 'text-[8px] mt-0.5' : 'text-[9.5px] mt-0.5'
-        )}
-      >
-        Requiere 5 captaciones
-      </div>
-    )
-  }
+  // Agentes: solo el 1º y 2º tienen requisito, y son 5 captaciones.
+  // El resto de ligas: 1 captación para cualquier premio.
+  const minimo = league === 'agentes' ? 5 : 1
+  if (league === 'agentes' && pos > 2) return null
 
-  const cumple = n >= 1
+  const cumple = n >= minimo
   return (
     <div
       className={cn(
@@ -260,7 +253,9 @@ function AvisoCaptaciones({ league, pos, spots, n = 0, compacto = false }) {
           : 'text-amber-600 dark:text-amber-400'
       )}
     >
-      {cumple ? `✓ ${n} ${n === 1 ? 'captación' : 'captaciones'}` : '⚠ Falta 1 captación'}
+      {cumple
+        ? `✓ ${n} ${n === 1 ? 'captación' : 'captaciones'}`
+        : `⚠ ${n} de ${minimo} ${minimo === 1 ? 'captación' : 'captaciones'}`}
     </div>
   )
 }
