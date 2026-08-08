@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Trophy, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
+import { useActionRequests } from '../hooks/useActionRequests'
 import { useGroups } from '../hooks/useGroups'
 import { getUserLeague, isCompetitor } from '../data/seedUsers'
 import { PRIZE_SPOTS, premioDe } from '../lib/premios'
@@ -23,6 +24,12 @@ export default function Ranking() {
   const { profile } = useAuth()
   const { users } = useUsers()
   const { groups } = useGroups()
+  // Para saber quién cumple el requisito de captaciones. Acotado con el
+  // índice de Firestore que ya existe (status + createdAt).
+  const { requests: aprobadas } = useActionRequests({
+    status: 'approved',
+    max: 300,
+  })
 
   const myLeague = getUserLeague(profile)
   const [tab, setTab] = useState(
@@ -43,6 +50,19 @@ export default function Ranking() {
     () => [...groups].sort((a, b) => (b.totalPoints ?? 0) - (a.totalPoints ?? 0)),
     [groups]
   )
+
+  // Captaciones aprobadas por persona (solo existen como acción en Obra
+  // Nueva y Staff; las de los agentes se llevan en el CRM, fuera de la app).
+  const captacionesPorUsuario = useMemo(() => {
+    const map = {}
+    for (const r of aprobadas) {
+      if (!r.userId) continue
+      if (String(r.actionType).startsWith('captacion_')) {
+        map[r.userId] = (map[r.userId] ?? 0) + 1
+      }
+    }
+    return map
+  }, [aprobadas])
 
   // Contexto de la liga
   const contexto = useMemo(() => {
@@ -72,7 +92,7 @@ export default function Ranking() {
 
   return (
     <div className="animate-fade-in pb-24">
-      <Header title="Liga" subtitle="El Boletín" />
+      <Header title="Liga" subtitle="Ranking" />
 
       {/* Pestañas */}
       <div className="flex gap-0.5 bg-black/[0.05] dark:bg-white/[0.07] rounded-xl p-[3px]">
@@ -110,6 +130,7 @@ export default function Ranking() {
           spots={spots}
           league={tab}
           myId={profile?.id}
+          captaciones={captacionesPorUsuario}
         />
       )}
 
@@ -137,7 +158,7 @@ export default function Ranking() {
 // ====================================================================
 // Clasificación individual
 // ====================================================================
-function TablaIndividual({ board, spots, league, myId }) {
+function TablaIndividual({ board, spots, league, myId, captaciones = {} }) {
   if (board.length === 0) return <VacioEstado texto="Aún no hay datos para mostrar" />
 
   const [primero, segundo, tercero, ...resto] = board
@@ -154,9 +175,22 @@ function TablaIndividual({ board, spots, league, myId }) {
     <>
       {/* Podio */}
       <div className="flex items-end justify-center gap-3.5 pt-4 pb-1">
-        <PodioHueco user={segundo} pos={2} league={league} faltan={faltanPara(segundo, 2)} />
-        <PodioHueco user={primero} pos={1} league={league} faltan={faltanPara(primero, 1)} destacado />
-        <PodioHueco user={tercero} pos={3} league={league} faltan={faltanPara(tercero, 3)} />
+        <PodioHueco
+          user={segundo} pos={2} league={league} spots={spots}
+          faltan={faltanPara(segundo, 2)}
+          captaciones={segundo ? captaciones[segundo.id] ?? 0 : 0}
+        />
+        <PodioHueco
+          user={primero} pos={1} league={league} spots={spots}
+          faltan={faltanPara(primero, 1)}
+          captaciones={primero ? captaciones[primero.id] ?? 0 : 0}
+          destacado
+        />
+        <PodioHueco
+          user={tercero} pos={3} league={league} spots={spots}
+          faltan={faltanPara(tercero, 3)}
+          captaciones={tercero ? captaciones[tercero.id] ?? 0 : 0}
+        />
       </div>
 
       <div className="h-px bg-black/[0.075] dark:bg-white/[0.09] mt-2" />
@@ -180,6 +214,9 @@ function TablaIndividual({ board, spots, league, myId }) {
               faltan={pos === spots + 1 ? faltan : null}
               isMe={u.id === myId}
               sinPuntos={(u.points ?? 0) === 0}
+              league={league}
+              spots={spots}
+              captaciones={captaciones[u.id] ?? 0}
             />
             {i < resto.length - 1 && (
               <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
@@ -191,7 +228,44 @@ function TablaIndividual({ board, spots, league, myId }) {
   )
 }
 
-function PodioHueco({ user, pos, league, faltan = null, destacado = false }) {
+
+// Aviso del requisito de captaciones para los puestos premiados.
+// En Agentes no se puede comprobar (las captaciones viven en el CRM), así
+// que se muestra como recordatorio. En Obra Nueva y Staff sí se verifica.
+function AvisoCaptaciones({ league, pos, spots, n = 0, compacto = false }) {
+  if (pos > spots) return null
+
+  if (league === 'agentes') {
+    if (pos > 2) return null
+    return (
+      <div
+        className={cn(
+          'font-bold text-rk-ink/40 dark:text-rk-cream/40 leading-tight',
+          compacto ? 'text-[8px] mt-0.5' : 'text-[9.5px] mt-0.5'
+        )}
+      >
+        Requiere 5 captaciones
+      </div>
+    )
+  }
+
+  const cumple = n >= 1
+  return (
+    <div
+      className={cn(
+        'font-bold leading-tight',
+        compacto ? 'text-[8px] mt-0.5' : 'text-[9.5px] mt-0.5',
+        cumple
+          ? 'text-emerald-600 dark:text-emerald-400'
+          : 'text-amber-600 dark:text-amber-400'
+      )}
+    >
+      {cumple ? `✓ ${n} ${n === 1 ? 'captación' : 'captaciones'}` : '⚠ Falta 1 captación'}
+    </div>
+  )
+}
+
+function PodioHueco({ user, pos, league, spots = 3, faltan = null, captaciones = 0, destacado = false }) {
   if (!user) return <div className="flex-1 max-w-[92px]" />
   const medalla = pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉'
   const anillo =
@@ -246,6 +320,13 @@ function PodioHueco({ user, pos, league, faltan = null, destacado = false }) {
           )}
         >
           {premio.nombre}
+          <AvisoCaptaciones
+            league={league}
+            pos={pos}
+            spots={spots}
+            n={captaciones}
+            compacto
+          />
         </div>
       ) : faltan ? (
         <div className="text-[8.5px] font-bold text-center mt-1 leading-tight px-0.5 text-rk-ink/35 dark:text-rk-cream/35">
@@ -256,7 +337,7 @@ function PodioHueco({ user, pos, league, faltan = null, destacado = false }) {
   )
 }
 
-function Fila({ pos, user, premio, faltan, isMe, sinPuntos }) {
+function Fila({ pos, user, premio, faltan, isMe, sinPuntos, league, spots, captaciones = 0 }) {
   return (
     <div
       className={cn(
@@ -280,9 +361,17 @@ function Fila({ pos, user, premio, faltan, isMe, sinPuntos }) {
           {isMe && <span className="text-rk-orange ml-1">(tú)</span>}
         </div>
         {premio ? (
-          <span className="inline-flex items-center gap-1 bg-amber-400/[0.18] text-amber-800 dark:text-amber-300 rounded-md px-1.5 py-[1px] text-[8.5px] font-extrabold mt-1">
-            🏅 {premio.nombre}
-          </span>
+          <>
+            <span className="inline-flex items-center gap-1 bg-amber-400/[0.18] text-amber-800 dark:text-amber-300 rounded-md px-1.5 py-[1px] text-[8.5px] font-extrabold mt-1">
+              🏅 {premio.nombre}
+            </span>
+            <AvisoCaptaciones
+              league={league}
+              pos={pos}
+              spots={spots}
+              n={captaciones}
+            />
+          </>
         ) : faltan ? (
           <div className="text-[9.5px] font-bold text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
             a {formatPoints(faltan)} pts del puesto premiado

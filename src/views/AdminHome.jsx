@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, TrendingUp, Users, Clock, RotateCcw, AlertTriangle, UserCog, Monitor, Eye } from 'lucide-react'
+import { ChevronRight, Users, RotateCcw, AlertTriangle, UserCog, Monitor, Eye } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useActionRequests } from '../hooks/useActionRequests'
 import { useGroups } from '../hooks/useGroups'
 import { isAdminRole } from '../data/seedUsers'
-import { formatPoints, relativeDate } from '../lib/utils'
+import { formatPoints, relativeDate, cn } from '../lib/utils'
 import { ACTION_TYPES } from '../lib/constants'
 import { resetPeriod, resetAll } from '../lib/admin'
 import Header from '../components/layout/Header'
-import GlassCard from '../components/ui/GlassCard'
 import Avatar from '../components/ui/Avatar'
 
 
@@ -29,181 +28,222 @@ export default function AdminHome() {
   const firstName = profile?.name?.split(' ')[0] ?? ''
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <Header title={`Hola, ${firstName} 👋`} subtitle="Panel Admin" showLogout />
+    <div className="animate-fade-in pb-4">
+      <Header title={`Hola, ${firstName}`} subtitle="Panel Admin" />
 
-      {/* Hint del panel desktop — solo visible en pantallas grandes */}
-      <Link to="/panel" className="hidden lg:flex items-center gap-3 rounded-2xl bg-rk-ink dark:bg-rk-cream/10 text-rk-cream dark:text-rk-cream px-4 py-3 active:scale-[0.98] transition-transform border border-rk-ink dark:border-rk-cream/10">
-        <div className="w-9 h-9 rounded-lg bg-rk-orange/20 text-rk-orange flex items-center justify-center shrink-0">
-          <Monitor size={17} />
-        </div>
+      {/* Panel desktop — solo en pantallas grandes */}
+      <Link
+        to="/panel"
+        className="hidden lg:flex items-center gap-3 rounded-2xl bg-rk-ink text-rk-cream px-4 py-3 mb-4 active:scale-[0.98] transition-transform"
+      >
+        <Monitor size={17} className="text-rk-orange shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-sm">Panel desktop</div>
-          <div className="text-xs opacity-70">Versión optimizada para tu ordenador</div>
-        </div>
-        <ChevronRight size={18} className="opacity-70" />
-      </Link>
-
-      {/* CTA aprobaciones */}
-      <Link to="/aprobaciones" className="block">
-        <div className="rounded-3xl p-5 bg-gradient-to-br from-rk-orange to-rk-orange-dark text-white shadow-lg shadow-rk-orange/30 active:scale-[0.98] transition-transform">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider opacity-80">
-                Solicitudes pendientes
-              </p>
-              <div className="text-4xl font-black mt-1">{pending.length}</div>
-              <p className="text-sm opacity-90 mt-1">
-                {pending.length === 0
-                  ? 'Todo al día'
-                  : pending.length === 1
-                  ? 'Acción esperando revisión'
-                  : 'Acciones esperando revisión'}
-              </p>
-            </div>
-            <ChevronRight size={28} />
+          <div className="text-[13px] font-black">Panel desktop</div>
+          <div className="text-[10.5px] font-semibold opacity-60">
+            Versión optimizada para tu ordenador
           </div>
         </div>
+        <ChevronRight size={17} className="opacity-50" />
       </Link>
 
-      {/* CTA facturación */}
-      {/* CTA equipos */}
-      <Link to="/equipos" className="block">
-        <div className="glass rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
-            <Users size={20} />
+      {/* Pendientes — el dato que importa */}
+      <Link to="/aprobaciones" className="block active:scale-[0.99] transition-transform">
+        <div
+          className={cn(
+            'rounded-3xl px-5 py-6 text-center',
+            pending.length > 0
+              ? 'bg-rk-orange text-white shadow-orange-glow'
+              : 'bg-black/[0.04] dark:bg-white/[0.06]'
+          )}
+        >
+          <p
+            className={cn(
+              'text-[9.5px] font-extrabold uppercase tracking-[1.7px]',
+              pending.length > 0
+                ? 'text-white/70'
+                : 'text-rk-ink/40 dark:text-rk-cream/40'
+            )}
+          >
+            Solicitudes pendientes
+          </p>
+          <div className="text-[46px] font-black tracking-tight leading-none mt-1.5">
+            {pending.length}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm">Gestionar equipos</div>
-            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
-              {groups.length === 0
-                ? 'Crea tu primer equipo y asigna agentes'
-                : `${groups.length} ${groups.length === 1 ? 'equipo creado' : 'equipos creados'}`}
-            </div>
-          </div>
-          <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
-        </div>
-      </Link>
-
-      {/* CTA agentes */}
-      <Link to="/agentes" className="block">
-        <div className="glass rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
-            <UserCog size={20} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm">Gestionar agentes</div>
-            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
-              {users.length} {users.length === 1 ? 'persona' : 'personas'} · añadir o eliminar
-            </div>
-          </div>
-          <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
+          <p
+            className={cn(
+              'text-[12px] font-bold mt-1.5',
+              pending.length > 0
+                ? 'text-white/80'
+                : 'text-rk-ink/45 dark:text-rk-cream/45'
+            )}
+          >
+            {pending.length === 0
+              ? '✨ Todo al día'
+              : pending.length === 1
+              ? 'Esperando revisión'
+              : 'Esperando revisión'}
+          </p>
         </div>
       </Link>
 
-      {/* Ver la app como usuario */}
-      <button onClick={() => setViewAsUser(true)} className="block w-full text-left">
-        <div className="glass rounded-2xl p-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
-          <div className="w-10 h-10 rounded-xl bg-rk-orange/10 text-rk-orange flex items-center justify-center shrink-0">
-            <Eye size={20} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm">Ver como usuario</div>
-            <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
-              La app tal y como la ve el equipo. Podrás registrar tus propias acciones.
+      {/* Métricas de la agencia */}
+      <div className="mt-5 border-t border-black/[0.07] dark:border-white/[0.08]">
+        <div className="flex py-3.5">
+          <div className="flex-1 text-center">
+            <div className="text-lg font-black text-rk-orange">
+              {formatPoints(totalPoints)}
+            </div>
+            <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+              Periodo
             </div>
           </div>
-          <ChevronRight size={20} className="text-rk-ink/40 dark:text-rk-cream/40" />
+          <div className="w-px my-1.5 bg-black/[0.07] dark:bg-white/[0.08]" />
+          <div className="flex-1 text-center">
+            <div className="text-lg font-black">
+              {agents.filter((a) => (a.points ?? 0) > 0).length}
+            </div>
+            <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+              Activos
+            </div>
+          </div>
+          <div className="w-px my-1.5 bg-black/[0.07] dark:bg-white/[0.08]" />
+          <div className="flex-1 text-center">
+            <div className="text-lg font-black">{formatPoints(totalLifetime)}</div>
+            <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-0.5">
+              Histórico
+            </div>
+          </div>
         </div>
-      </button>
-
-      {/* Métricas agencia */}
-      <div className="grid grid-cols-2 gap-3">
-        <MetricCard
-          icon={<TrendingUp size={18} className="text-rk-orange" />}
-          label="Puntos del periodo"
-          value={formatPoints(totalPoints)}
-        />
-        <MetricCard
-          icon={<Users size={18} className="text-rk-orange" />}
-          label="Agentes activos"
-          value={agents.filter((a) => (a.points ?? 0) > 0).length}
-        />
-        <MetricCard
-          icon={<Clock size={18} className="text-rk-orange" />}
-          label="Histórico total"
-          value={formatPoints(totalLifetime)}
-        />
       </div>
 
-      {/* Actividad reciente */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold">Últimas solicitudes</h2>
-          <Link to="/aprobaciones" className="text-sm font-semibold text-rk-orange flex items-center gap-1">
-            Ver todas <ChevronRight size={16} />
+      {/* Accesos de gestión */}
+      <FilaAdmin
+        Icon={Users}
+        label="Gestionar equipos"
+        sub={
+          groups.length === 0
+            ? 'Crea tu primer equipo y asigna agentes'
+            : `${groups.length} ${groups.length === 1 ? 'equipo creado' : 'equipos creados'}`
+        }
+        to="/equipos"
+        primero
+      />
+      <FilaAdmin
+        Icon={UserCog}
+        label="Gestionar agentes"
+        sub={`${users.length} ${users.length === 1 ? 'persona' : 'personas'} · añadir o eliminar`}
+        to="/agentes"
+      />
+      <FilaAdmin
+        Icon={Eye}
+        label="Ver como usuario"
+        sub="La app tal y como la ve el equipo"
+        onClick={() => setViewAsUser(true)}
+      />
+
+      {/* Últimas solicitudes */}
+      <section className="mt-6">
+        <div className="flex items-center justify-between mb-2.5">
+          <h2 className="text-base font-black">Últimas solicitudes</h2>
+          <Link
+            to="/aprobaciones"
+            className="text-xs font-bold text-rk-orange flex items-center gap-0.5"
+          >
+            Ver todas <ChevronRight size={14} />
           </Link>
         </div>
         {pending.length === 0 ? (
-          <GlassCard className="text-center text-sm text-rk-ink/60 dark:text-rk-cream/60 py-6">
+          <p className="text-[12.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 py-5 text-center">
             No hay solicitudes pendientes ✨
-          </GlassCard>
+          </p>
         ) : (
-          <div className="space-y-2">
-            {pending.slice(0, 5).map((r) => (
-              <div key={r.id} className="glass rounded-2xl p-3 flex items-center gap-3">
-                <Avatar name={r.userName} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold truncate">{r.userName}</div>
-                  <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60 truncate">
-                    {ACTION_TYPES[r.actionType]?.icon} {r.actionLabel}
+          <>
+            <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+            {pending.slice(0, 5).map((r, i) => (
+              <div key={r.id}>
+                <div className="flex items-center gap-3 py-3">
+                  <Avatar name={r.userName} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12.5px] font-extrabold truncate">
+                      {r.userName}
+                    </div>
+                    <div className="text-[10.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 truncate">
+                      {ACTION_TYPES[r.actionType]?.icon} {r.actionLabel}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-[13px] font-black text-rk-orange">
+                      +{r.points}
+                    </div>
+                    <div className="text-[9.5px] font-bold text-rk-ink/35 dark:text-rk-cream/35">
+                      {relativeDate(r.createdAt)}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-black text-rk-orange">+{r.points}</div>
-                  <div className="text-[10px] text-rk-ink/50 dark:text-rk-cream/50">
-                    {relativeDate(r.createdAt)}
-                  </div>
-                </div>
+                {i < Math.min(pending.length, 5) - 1 && (
+                  <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+                )}
               </div>
             ))}
-          </div>
+          </>
         )}
       </section>
 
-      {/* Reset periodo - botón al final, peligroso */}
-      <section className="pt-2">
+      {/* Nuevo periodo */}
+      <div className="mt-8 pt-5 border-t border-black/[0.07] dark:border-white/[0.08]">
         <button
           onClick={() => setShowReset(true)}
-          className="w-full rounded-2xl bg-black/5 dark:bg-white/5 text-rk-ink/70 dark:text-rk-cream/70 font-bold py-3 text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+          className="w-full flex items-center justify-center gap-2 py-3 text-[12.5px] font-bold text-rk-ink/45 dark:text-rk-cream/45 active:opacity-60 transition-opacity"
         >
-          <RotateCcw size={16} /> Iniciar nuevo periodo
+          <RotateCcw size={15} /> Iniciar nuevo periodo
         </button>
-      </section>
+      </div>
 
-      {showReset && <ResetModal onClose={() => setShowReset(false)} stats={{
-        agents: agents.length,
-        points: totalPoints,
-        lifetimePoints: totalLifetime,
-        actionRequests: pending.length, // solo pendientes visible, pero el reset borra todas
-      }} />}
+      {showReset && (
+        <ResetModal
+          onClose={() => setShowReset(false)}
+          stats={{
+            agents: agents.length,
+            points: totalPoints,
+            lifetimePoints: totalLifetime,
+            actionRequests: pending.length,
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function MetricCard({ icon, label, value }) {
-  return (
-    <GlassCard className="!p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
-          {label}
-        </span>
-        {icon}
+function FilaAdmin({ Icon, label, sub, to, onClick, primero = false }) {
+  const contenido = (
+    <>
+      <Icon size={18} className="text-rk-ink/55 dark:text-rk-cream/55 shrink-0" />
+      <div className="flex-1 min-w-0 text-left">
+        <div className="text-[13px] font-bold truncate">{label}</div>
+        <div className="text-[10.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 truncate">
+          {sub}
+        </div>
       </div>
-      <div className="text-2xl font-black mt-1">{value}</div>
-    </GlassCard>
+      <ChevronRight size={16} className="text-rk-ink/20 dark:text-rk-cream/20 shrink-0" />
+    </>
+  )
+  return (
+    <>
+      {primero && <div className="border-t border-black/[0.07] dark:border-white/[0.08]" />}
+      {to ? (
+        <Link to={to} className="w-full flex items-center gap-3 py-3.5 active:opacity-60 transition-opacity">
+          {contenido}
+        </Link>
+      ) : (
+        <button onClick={onClick} className="w-full flex items-center gap-3 py-3.5 active:opacity-60 transition-opacity">
+          {contenido}
+        </button>
+      )}
+      <div className="border-t border-black/[0.07] dark:border-white/[0.08]" />
+    </>
   )
 }
+
 
 function ResetModal({ onClose, stats }) {
   const [mode, setMode] = useState('periodo') // 'periodo' | 'todo'
