@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import {
-  ArrowLeft, Plus, X, Trash2, AlertTriangle, UserPlus,
+  Plus, X, Trash2, AlertTriangle, UserPlus,
   Pencil, Check, Users as UsersIcon, Award,
 } from 'lucide-react'
 import {
@@ -27,24 +27,14 @@ export default function PanelEquipos() {
   const [selectedId, setSelectedId] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
 
-  const agents = useMemo(
-    () => users.filter(isCompetitor),
-    [users]
-  )
-
-  const unassigned = useMemo(
-    () => agents.filter((a) => !a.groupId),
-    [agents]
-  )
+  const agents = useMemo(() => users.filter(isCompetitor), [users])
+  const unassigned = useMemo(() => agents.filter((a) => !a.groupId), [agents])
 
   const sortedGroups = useMemo(
-    () => [...groups].sort(
-      (a, b) => (b.totalPoints || 0) - (a.totalPoints || 0)
-    ),
+    () => [...groups].sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0)),
     [groups]
   )
 
-  // Si el equipo seleccionado ya no existe (lo acaban de borrar), limpiar.
   const selectedGroup = selectedId
     ? sortedGroups.find((g) => g.id === selectedId) ?? null
     : null
@@ -52,111 +42,93 @@ export default function PanelEquipos() {
   if (!isAdmin) return <Navigate to="/" replace />
 
   return (
-    <div className="space-y-5 animate-fade-in min-w-[1024px]">
-      {/* HEADER */}
-      <header className="flex items-center pb-5 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <Link
-          to="/panel"
-          className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition mr-4"
-        >
-          <ArrowLeft size={13} /> Panel
-        </Link>
+    <div className="min-w-[980px] max-w-[1280px] animate-fade-in">
+      <div className="flex items-start justify-between">
         <div>
-          <p className="text-[10px] font-bold tracking-[2px] text-rk-orange">
-            GESTIÓN
+          <h1 className="text-[27px] font-black tracking-tight">Equipos</h1>
+          <p className="text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1">
+            {sortedGroups.length} {sortedGroups.length === 1 ? 'equipo' : 'equipos'}
+            {unassigned.length > 0 && ` · ${unassigned.length} sin asignar`}
           </p>
-          <h1 className="text-2xl font-black tracking-tight mt-1">Equipos</h1>
         </div>
-
         <button
           onClick={() => setShowCreate(true)}
-          className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-rk-orange text-white font-extrabold text-sm rounded-xl shadow-orange-glow-sm hover:bg-rk-orange-dark transition"
+          className="flex items-center gap-2 px-4 py-2.5 bg-rk-orange text-white font-extrabold text-[12.5px] rounded-lg hover:bg-rk-orange-dark transition"
         >
-          <Plus size={16} /> Crear equipo
+          <Plus size={15} /> Crear equipo
         </button>
-      </header>
+      </div>
 
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-[1fr_1.6fr] gap-4">
+      <div className="grid grid-cols-[1fr_1.6fr] gap-6 items-start mt-6">
         {/* COLUMNA IZQUIERDA — lista de equipos */}
-        <div className="space-y-4">
-          <SectionCard tag="LIGA" title={`Equipos (${sortedGroups.length})`}>
+        <div>
+          <Seccion titulo="Equipos" nota={`${sortedGroups.length}`}>
             {sortedGroups.length === 0 ? (
-              <div className="text-center py-8">
-                <UsersIcon
-                  size={28}
-                  className="mx-auto text-rk-ink/30 dark:text-rk-cream/30 mb-2"
-                />
-                <p className="text-sm font-semibold text-rk-ink/60 dark:text-rk-cream/60">
-                  Todavía no hay equipos
-                </p>
-                <p className="text-xs text-rk-ink/40 dark:text-rk-cream/40 mt-1">
-                  Crea el primero con el botón de arriba
-                </p>
-              </div>
+              <Vacio
+                icono={<UsersIcon size={22} />}
+                titulo="Todavía no hay equipos"
+                texto="Crea el primero con el botón de arriba"
+              />
             ) : (
-              <div className="space-y-1.5">
-                {sortedGroups.map((g) => {
-                  const memberCount = agents.filter(
-                    (a) => a.groupId === g.id
-                  ).length
-                  const isSelected = selectedId === g.id
-                  return (
-                    <button
-                      key={g.id}
-                      onClick={() => setSelectedId(g.id)}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition',
-                        isSelected
-                          ? 'bg-rk-orange/10 ring-1 ring-rk-orange/30'
-                          : 'bg-black/[0.02] dark:bg-white/[0.03] hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'
-                      )}
-                    >
+              sortedGroups.map((g, i) => {
+                const memberCount = agents.filter((a) => a.groupId === g.id).length
+                const isSelected = selectedId === g.id
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedId(g.id)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
+                      i < sortedGroups.length - 1 &&
+                        'border-b border-black/[0.055] dark:border-white/[0.06]',
+                      isSelected && 'bg-rk-orange/[0.06]'
+                    )}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg shrink-0"
+                      style={{ backgroundColor: g.color }}
+                    />
+                    <div className="flex-1 min-w-0">
                       <div
-                        className="w-8 h-8 rounded-lg shrink-0"
-                        style={{ backgroundColor: g.color }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-extrabold text-sm truncate">
-                          {g.name}
-                        </div>
-                        <div className="text-[11px] text-rk-ink/60 dark:text-rk-cream/60">
-                          {memberCount}{' '}
-                          {memberCount === 1 ? 'miembro' : 'miembros'}
-                        </div>
+                        className={cn(
+                          'text-[12.5px] truncate',
+                          isSelected ? 'font-extrabold text-rk-orange' : 'font-bold'
+                        )}
+                      >
+                        {g.name}
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-black text-sm tabular-nums">
-                          {formatPoints(g.totalPoints || 0)}
-                        </div>
-                        <div className="text-[10px] text-rk-ink/50 dark:text-rk-cream/50">
-                          pts
-                        </div>
+                      <div className="text-[10.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
+                        {memberCount} {memberCount === 1 ? 'miembro' : 'miembros'}
                       </div>
-                    </button>
-                  )
-                })}
-              </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-black text-[13px] tabular-nums">
+                        {formatPoints(g.totalPoints || 0)}
+                      </div>
+                      <div className="text-[9px] font-bold text-rk-ink/35 dark:text-rk-cream/35">
+                        pts
+                      </div>
+                    </div>
+                  </button>
+                )
+              })
             )}
-          </SectionCard>
+          </Seccion>
 
           {/* Sin equipo */}
           {unassigned.length > 0 && (
-            <SectionCard
-              tag="SIN ASIGNAR"
-              title={`Agentes sin equipo (${unassigned.length})`}
-            >
-              <div className="flex flex-wrap gap-1.5">
+            <Seccion titulo="Sin asignar" nota={`${unassigned.length}`} className="mt-6">
+              <div className="flex flex-wrap gap-1.5 px-4 py-3.5">
                 {unassigned.map((a) => (
                   <div
                     key={a.id}
-                    className="px-2.5 py-1 rounded-md bg-black/[0.04] dark:bg-white/[0.05] text-[11px] font-bold"
+                    className="px-2.5 py-1 rounded-full bg-black/[0.045] dark:bg-white/[0.06] text-[11px] font-bold"
                   >
                     {a.name}
                   </div>
                 ))}
               </div>
-            </SectionCard>
+            </Seccion>
           )}
         </div>
 
@@ -183,43 +155,49 @@ export default function PanelEquipos() {
 }
 
 // ====================================================================
-// Section card
+// Sección con título fuera del contenedor (mismo patrón que Panel.jsx)
 // ====================================================================
-function SectionCard({ tag, title, badge, children }) {
+function Seccion({ titulo, nota, className, children }) {
   return (
-    <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-5 border border-black/[0.04] dark:border-white/[0.05] shadow-soft">
-      <div className="flex items-center mb-3.5">
-        <div>
-          <div className="text-[9px] font-extrabold tracking-[2px] text-rk-orange">
-            {tag}
-          </div>
-          <div className="text-base font-black mt-0.5">{title}</div>
-        </div>
-        {badge && (
-          <div className="ml-auto px-3 py-1 bg-rk-orange/10 text-rk-orange rounded-full text-[11px] font-extrabold">
-            {badge}
-          </div>
+    <div className={className}>
+      <div className="flex items-baseline mb-2.5">
+        <h2 className="text-[15.5px] font-black tracking-tight">{titulo}</h2>
+        {nota && (
+          <span className="text-[11.5px] font-semibold text-rk-ink/38 dark:text-rk-cream/38 ml-2.5">
+            {nota}
+          </span>
         )}
       </div>
-      {children}
+      <div className="bg-white dark:bg-rk-ink-card border border-black/[0.07] dark:border-white/[0.08] rounded-xl overflow-hidden">
+        {children}
+      </div>
     </div>
   )
 }
 
-// ====================================================================
-// Empty detail (no team selected)
-// ====================================================================
+function Vacio({ icono, titulo, texto }) {
+  return (
+    <div className="text-center py-10">
+      {icono && (
+        <div className="mx-auto mb-2.5 text-rk-ink/25 dark:text-rk-cream/25">{icono}</div>
+      )}
+      <p className="text-[13px] font-bold">{titulo}</p>
+      {texto && (
+        <p className="text-[11.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1">
+          {texto}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function EmptyDetail() {
   return (
-    <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-12 border border-black/[0.04] dark:border-white/[0.05] shadow-soft text-center">
-      <div className="w-16 h-16 rounded-2xl bg-rk-orange/10 text-rk-orange flex items-center justify-center mx-auto mb-4">
-        <UsersIcon size={28} />
-      </div>
-      <h3 className="text-lg font-black mb-1">
-        Selecciona un equipo
-      </h3>
-      <p className="text-sm text-rk-ink/60 dark:text-rk-cream/60">
-        Toca uno en la lista de la izquierda para ver y gestionar sus miembros.
+    <div className="border border-dashed border-black/[0.12] dark:border-white/[0.14] rounded-xl py-16 text-center">
+      <UsersIcon size={24} className="mx-auto text-rk-ink/25 dark:text-rk-cream/25 mb-2.5" />
+      <h3 className="text-[13px] font-bold">Selecciona un equipo</h3>
+      <p className="text-[11.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1">
+        Elige uno en la lista de la izquierda para ver y gestionar sus miembros.
       </p>
     </div>
   )
@@ -337,170 +315,167 @@ function TeamDetail({ group, agents, onDeleted }) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Cabecera del equipo */}
-      <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-5 border border-black/[0.04] dark:border-white/[0.05] shadow-soft">
-        <div className="flex items-start gap-4">
-          <div
-            className="w-14 h-14 rounded-2xl shrink-0"
-            style={{ backgroundColor: group.color }}
-          />
-          <div className="flex-1 min-w-0">
-            {editName ? (
-              <div className="flex items-center gap-2 max-w-sm">
-                <input
-                  type="text"
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  maxLength={32}
-                  className="flex-1 bg-black/5 dark:bg-white/5 rounded-xl px-3 py-2 font-extrabold text-lg focus:outline-none focus:ring-2 focus:ring-rk-orange"
-                  autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && handleRenameSave()}
-                />
-                <button
-                  onClick={handleRenameSave}
-                  className="p-2 rounded-xl bg-rk-orange text-white"
-                >
-                  <Check size={18} />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setTempName(group.name)
-                  setEditName(true)
-                }}
-                className="flex items-center gap-2 text-2xl font-black tracking-tight hover:text-rk-orange transition"
-              >
-                {group.name}
-                <Pencil
-                  size={14}
-                  className="text-rk-ink/30 dark:text-rk-cream/30"
-                />
-              </button>
-            )}
-            <div className="flex items-center gap-4 mt-2 text-xs">
-              <span className="font-bold text-rk-ink/70 dark:text-rk-cream/70">
-                <UsersIcon size={11} className="inline -mt-0.5 mr-1" />
-                {members.length}{' '}
-                {members.length === 1 ? 'miembro' : 'miembros'}
-              </span>
-              <span className="font-bold text-rk-ink/70 dark:text-rk-cream/70">
-                <Award size={11} className="inline -mt-0.5 mr-1" />
-                {formatPoints(memberPoints)} pts actuales
-              </span>
-              <span className="text-rk-ink/50 dark:text-rk-cream/50">
-                Histórico: {formatPoints(group.totalPoints || 0)} pts
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="px-3 py-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/15 text-xs font-extrabold flex items-center gap-1.5 transition"
-          >
-            <Trash2 size={13} /> Borrar equipo
-          </button>
-        </div>
-
-        {/* Selector de color */}
-        <div className="mt-4 pt-4 border-t border-black/[0.04] dark:border-white/[0.05]">
-          <div className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50 mb-2">
-            COLOR DEL EQUIPO
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {GROUP_COLOR_PALETTE.map((c) => (
-              <button
-                key={c}
-                onClick={() => handleChangeColor(c)}
-                className={cn(
-                  'w-8 h-8 rounded-lg transition',
-                  group.color === c
-                    ? 'ring-2 ring-offset-2 ring-rk-orange dark:ring-offset-rk-ink-card scale-110'
-                    : 'hover:scale-110'
-                )}
-                style={{ backgroundColor: c }}
+    <div>
+      {/* Cabecera del equipo, sin caja */}
+      <div className="flex items-start gap-4">
+        <div
+          className="w-12 h-12 rounded-xl shrink-0"
+          style={{ backgroundColor: group.color }}
+        />
+        <div className="flex-1 min-w-0">
+          {editName ? (
+            <div className="flex items-center gap-2 max-w-sm">
+              <input
+                type="text"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                maxLength={32}
+                className="flex-1 bg-black/[0.045] dark:bg-white/[0.06] rounded-lg px-3 py-1.5 font-black text-[17px] outline-none focus:ring-2 focus:ring-rk-orange/40"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleRenameSave()}
               />
-            ))}
+              <button
+                onClick={handleRenameSave}
+                className="p-2 rounded-lg bg-rk-orange text-white"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setTempName(group.name)
+                setEditName(true)
+              }}
+              className="flex items-center gap-2 text-[19px] font-black tracking-tight hover:text-rk-orange transition"
+            >
+              {group.name}
+              <Pencil size={13} className="text-rk-ink/30 dark:text-rk-cream/30" />
+            </button>
+          )}
+          <div className="flex items-center gap-3.5 mt-1.5 text-[11px] font-semibold text-rk-ink/45 dark:text-rk-cream/45">
+            <span className="flex items-center gap-1">
+              <UsersIcon size={11} />
+              {members.length} {members.length === 1 ? 'miembro' : 'miembros'}
+            </span>
+            <span className="flex items-center gap-1">
+              <Award size={11} />
+              {formatPoints(memberPoints)} pts actuales
+            </span>
+            <span>Histórico: {formatPoints(group.totalPoints || 0)} pts</span>
           </div>
+        </div>
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="px-3 py-1.5 rounded-lg text-red-500 hover:bg-red-500/[0.08] text-[11.5px] font-extrabold flex items-center gap-1.5 transition shrink-0"
+        >
+          <Trash2 size={13} /> Borrar equipo
+        </button>
+      </div>
+
+      {/* Selector de color */}
+      <div className="mt-4 pt-4 border-t border-black/[0.075] dark:border-white/[0.09]">
+        <div className="text-[10px] font-extrabold uppercase tracking-[1.3px] text-rk-ink/40 dark:text-rk-cream/40 mb-2">
+          Color del equipo
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {GROUP_COLOR_PALETTE.map((c) => (
+            <button
+              key={c}
+              onClick={() => handleChangeColor(c)}
+              className={cn(
+                'w-7 h-7 rounded-lg transition',
+                group.color === c
+                  ? 'ring-2 ring-offset-2 ring-rk-orange dark:ring-offset-rk-ink scale-110'
+                  : 'hover:scale-110'
+              )}
+              style={{ backgroundColor: c }}
+            />
+          ))}
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 text-red-500 text-sm font-semibold text-center p-2.5 rounded-2xl">
+        <div className="bg-red-500/10 text-red-500 text-[12.5px] font-semibold text-center p-2.5 rounded-xl mt-4">
           {error}
         </div>
       )}
 
       {/* Miembros */}
-      <SectionCard tag="MIEMBROS" title={`En el equipo (${members.length})`}>
+      <Seccion titulo="Miembros" nota={`${members.length} en el equipo`} className="mt-6">
         {members.length === 0 ? (
-          <div className="text-sm text-rk-ink/50 dark:text-rk-cream/50 py-4 text-center">
+          <div className="text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 py-6 text-center">
             Aún no hay miembros. Añade alguno desde la lista de abajo.
           </div>
         ) : (
-          <div className="space-y-1.5">
-            {members.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-center gap-3 px-3 py-2 bg-black/[0.02] dark:bg-white/[0.03] rounded-xl"
-              >
-                <Avatar name={m.name} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-sm truncate">
-                    {m.name}
-                  </div>
-                  <div className="text-[11px] text-rk-ink/60 dark:text-rk-cream/60">
-                    {formatPoints(m.points || 0)} pts
-                  </div>
+          members.map((m, i) => (
+            <div
+              key={m.id}
+              className={cn(
+                'flex items-center gap-3 px-4 py-2.5',
+                i < members.length - 1 &&
+                  'border-b border-black/[0.055] dark:border-white/[0.06]'
+              )}
+            >
+              <Avatar name={m.name} size="sm" />
+              <div className="flex-1 min-w-0">
+                <div className="font-extrabold text-[12.5px] truncate">
+                  {m.name}
                 </div>
-                <button
-                  onClick={() => handleRemoveMember(m)}
-                  className="px-2.5 py-1.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.05] hover:bg-red-500/10 hover:text-red-500 text-xs font-extrabold transition flex items-center gap-1"
-                >
-                  <X size={12} /> Quitar
-                </button>
+                <div className="text-[10.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
+                  {formatPoints(m.points || 0)} pts
+                </div>
+              </div>
+              <button
+                onClick={() => handleRemoveMember(m)}
+                className="px-2.5 py-1.5 rounded-lg text-rk-ink/45 dark:text-rk-cream/45 hover:bg-red-500/[0.08] hover:text-red-500 text-[11px] font-extrabold transition flex items-center gap-1"
+              >
+                <X size={11} /> Quitar
+              </button>
+            </div>
+          ))
+        )}
+      </Seccion>
+
+      {/* Añadir miembros */}
+      <Seccion titulo="Añadir" nota={`${available.length} disponibles`} className="mt-6">
+        {available.length === 0 ? (
+          <div className="text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 py-6 text-center">
+            Todos los agentes ya están asignados a equipos.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 divide-x divide-black/[0.055] dark:divide-white/[0.06]">
+            {[0, 1].map((col) => (
+              <div key={col} className="divide-y divide-black/[0.055] dark:divide-white/[0.06]">
+                {available
+                  .filter((_, i) => i % 2 === col)
+                  .map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => handleAddMember(a)}
+                      disabled={adding}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition disabled:opacity-50 group hover:bg-rk-orange/[0.06]"
+                    >
+                      <Avatar name={a.name} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-extrabold text-[11.5px] truncate">
+                          {a.name}
+                        </div>
+                        <div className="text-[10px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 truncate">
+                          {a.groupId ? 'Reasignar' : 'Sin equipo'}
+                        </div>
+                      </div>
+                      <UserPlus
+                        size={13}
+                        className="text-rk-ink/30 dark:text-rk-cream/30 group-hover:text-rk-orange transition shrink-0"
+                      />
+                    </button>
+                  ))}
               </div>
             ))}
           </div>
         )}
-      </SectionCard>
-
-      {/* Añadir miembros */}
-      <SectionCard
-        tag="AÑADIR"
-        title={`Agentes disponibles (${available.length})`}
-      >
-        {available.length === 0 ? (
-          <div className="text-sm text-rk-ink/50 dark:text-rk-cream/50 py-4 text-center">
-            Todos los agentes ya están asignados a equipos.
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-1.5">
-            {available.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => handleAddMember(a)}
-                disabled={adding}
-                className="flex items-center gap-2.5 px-3 py-2 bg-black/[0.02] dark:bg-white/[0.03] hover:bg-rk-orange/10 hover:ring-1 hover:ring-rk-orange/30 rounded-xl text-left transition disabled:opacity-50 group"
-              >
-                <Avatar name={a.name} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-xs truncate">
-                    {a.name}
-                  </div>
-                  <div className="text-[10px] text-rk-ink/60 dark:text-rk-cream/60 truncate">
-                    {a.groupId ? 'Reasignar' : 'Sin equipo'}
-                  </div>
-                </div>
-                <UserPlus
-                  size={14}
-                  className="text-rk-ink/40 dark:text-rk-cream/40 group-hover:text-rk-orange transition"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-      </SectionCard>
+      </Seccion>
 
       {confirmDelete && (
         <ConfirmDeleteModal
@@ -566,7 +541,7 @@ function CrearEquipoModal({ onClose }) {
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 block mb-1.5">
+            <label className="text-[10px] font-extrabold uppercase tracking-[1.2px] text-rk-ink/40 dark:text-rk-cream/40 block mb-1.5">
               Nombre
             </label>
             <input
@@ -575,13 +550,13 @@ function CrearEquipoModal({ onClose }) {
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej. Equipo Alfa"
               maxLength={32}
-              className="w-full bg-black/5 dark:bg-white/5 rounded-2xl px-4 py-3 font-semibold focus:outline-none focus:ring-2 focus:ring-rk-orange"
+              className="w-full bg-black/[0.045] dark:bg-white/[0.06] rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold outline-none focus:ring-2 focus:ring-rk-orange/40 placeholder:text-rk-ink/30 dark:placeholder:text-rk-cream/30"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 block mb-2">
+            <label className="text-[10px] font-extrabold uppercase tracking-[1.2px] text-rk-ink/40 dark:text-rk-cream/40 block mb-2">
               Color
             </label>
             <div className="flex flex-wrap gap-2">
@@ -610,7 +585,7 @@ function CrearEquipoModal({ onClose }) {
           <button
             onClick={handleCreate}
             disabled={loading}
-            className="w-full px-5 py-3 bg-rk-orange text-white font-extrabold rounded-xl shadow-orange-glow-sm hover:bg-rk-orange-dark transition disabled:opacity-50"
+            className="w-full px-5 py-3 bg-rk-orange text-white font-extrabold text-[13.5px] rounded-xl hover:bg-rk-orange-dark transition disabled:opacity-50"
           >
             {loading ? 'Creando…' : 'Crear equipo'}
           </button>

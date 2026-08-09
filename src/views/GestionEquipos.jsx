@@ -23,10 +23,10 @@ import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
 import { GROUP_COLOR_PALETTE, isCompetitor } from '../data/seedUsers'
-import { formatPoints } from '../lib/utils'
+import { formatPoints, cn } from '../lib/utils'
 import { notifyTeamAssignment } from '../lib/notifications'
 import Header from '../components/layout/Header'
-import GlassCard from '../components/ui/GlassCard'
+import Avatar from '../components/ui/Avatar'
 
 export default function GestionEquipos() {
   const { isAdmin } = useAuth()
@@ -56,45 +56,57 @@ export default function GestionEquipos() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="animate-fade-in pb-6">
       <Header title="Equipos" subtitle="Gestión Admin" />
 
-      <button onClick={() => setShowCreate(true)} className="btn-primary w-full flex items-center justify-center gap-2">
-        <Plus size={18} /> Crear equipo
-      </button>
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
+          {groups.length} {groups.length === 1 ? 'equipo' : 'equipos'}
+        </p>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="w-9 h-9 rounded-xl bg-rk-orange text-white flex items-center justify-center active:scale-95 transition-transform"
+          aria-label="Crear equipo"
+        >
+          <Plus size={17} />
+        </button>
+      </div>
 
       {/* Lista de equipos */}
       {groups.length === 0 ? (
-        <GlassCard className="text-center py-8">
-          <UsersIcon size={32} className="mx-auto text-rk-ink/30 dark:text-rk-cream/30 mb-2" />
-          <p className="text-sm font-semibold text-rk-ink/60 dark:text-rk-cream/60">
-            Todavía no hay equipos
-          </p>
-          <p className="text-xs text-rk-ink/40 dark:text-rk-cream/40 mt-1">
+        <div className="text-center py-14">
+          <UsersIcon size={28} className="mx-auto text-rk-ink/25 dark:text-rk-cream/25 mb-2.5" />
+          <p className="text-[13px] font-bold">Todavía no hay equipos</p>
+          <p className="text-[11.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1">
             Crea el primero y asigna agentes
           </p>
-        </GlassCard>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {groups.map((g) => {
+        <div className="mt-3">
+          <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+          {groups.map((g, i) => {
             const memberCount = agents.filter((a) => a.groupId === g.id).length
             return (
               <button
                 key={g.id}
                 onClick={() => setSelectedGroupId(g.id)}
-                className="w-full glass rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
+                className={cn(
+                  'w-full flex items-center gap-3 py-3 text-left active:opacity-70 transition-opacity',
+                  i < groups.length - 1 &&
+                    'border-b border-black/[0.075] dark:border-white/[0.09]'
+                )}
               >
                 <div
-                  className="w-10 h-10 rounded-xl shrink-0"
+                  className="w-9 h-9 rounded-xl shrink-0"
                   style={{ backgroundColor: g.color }}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold truncate">{g.name}</div>
-                  <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60">
+                  <div className="font-extrabold text-[13.5px] truncate">{g.name}</div>
+                  <div className="text-[11px] font-semibold text-rk-ink/45 dark:text-rk-cream/45">
                     {memberCount} {memberCount === 1 ? 'miembro' : 'miembros'} · {formatPoints(g.totalPoints ?? 0)} pts
                   </div>
                 </div>
-                <ChevronLeft size={18} className="rotate-180 text-rk-ink/40 dark:text-rk-cream/40" />
+                <ChevronLeft size={16} className="rotate-180 text-rk-ink/25 dark:text-rk-cream/25 shrink-0" />
               </button>
             )
           })}
@@ -103,19 +115,20 @@ export default function GestionEquipos() {
 
       {/* Sin equipo */}
       {unassigned.length > 0 && (
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 mb-2 px-1">
+        <section className="mt-6">
+          <h3 className="text-[10px] font-extrabold uppercase tracking-[1.3px] text-rk-ink/40 dark:text-rk-cream/40 mb-2.5">
             Agentes sin equipo ({unassigned.length})
           </h3>
-          <GlassCard className="!p-3">
-            <div className="flex flex-wrap gap-2">
-              {unassigned.map((a) => (
-                <div key={a.id} className="px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/5 text-xs font-semibold">
-                  {a.name}
-                </div>
-              ))}
-            </div>
-          </GlassCard>
+          <div className="flex flex-wrap gap-1.5">
+            {unassigned.map((a) => (
+              <div
+                key={a.id}
+                className="px-2.5 py-1 rounded-full bg-black/[0.045] dark:bg-white/[0.06] text-[11.5px] font-bold"
+              >
+                {a.name}
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
@@ -171,7 +184,7 @@ function CrearEquipoModal({ onClose }) {
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 block mb-1.5">
+            <label className="text-[10px] font-extrabold uppercase tracking-[1.2px] text-rk-ink/40 dark:text-rk-cream/40 block mb-1.5">
               Nombre
             </label>
             <input
@@ -180,13 +193,13 @@ function CrearEquipoModal({ onClose }) {
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej. Equipo Alfa"
               maxLength={32}
-              className="w-full bg-black/5 dark:bg-white/5 rounded-2xl px-4 py-3 font-semibold focus:outline-none focus:ring-2 focus:ring-rk-orange"
+              className="w-full bg-black/[0.045] dark:bg-white/[0.06] rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold outline-none focus:ring-2 focus:ring-rk-orange/40 placeholder:text-rk-ink/30 dark:placeholder:text-rk-cream/30"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 block mb-2">
+            <label className="text-[10px] font-extrabold uppercase tracking-[1.2px] text-rk-ink/40 dark:text-rk-cream/40 block mb-2">
               Color
             </label>
             <div className="flex flex-wrap gap-2">
@@ -259,7 +272,6 @@ function DetalleEquipo({ group, agents, onBack }) {
   }
 
   async function handleDelete() {
-    // Quitar groupId a todos los miembros y borrar el grupo
     const batch = writeBatch(db)
     for (const m of members) {
       batch.update(doc(db, COL.users, m.id), { groupId: null })
@@ -270,135 +282,148 @@ function DetalleEquipo({ group, agents, onBack }) {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      {/* Header con back */}
-      <div className="flex items-center gap-2">
-        <button onClick={onBack} className="p-2 -ml-2 rounded-full active:bg-black/5 dark:active:bg-white/5">
-          <ChevronLeft size={22} />
-        </button>
-        <span className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
-          Volver a equipos
-        </span>
-      </div>
+    <div className="animate-fade-in pb-6">
+      {/* Volver */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1 -ml-1.5 py-3 text-[11px] font-extrabold uppercase tracking-[1.2px] text-rk-ink/45 dark:text-rk-cream/45"
+      >
+        <ChevronLeft size={15} /> Equipos
+      </button>
 
       {/* Cabecera de grupo */}
-      <GlassCard className="text-center">
+      <div className="flex flex-col items-center text-center pt-2 pb-1">
         <div
-          className="w-16 h-16 rounded-2xl mx-auto mb-3"
+          className="w-16 h-16 rounded-2xl mb-3"
           style={{ backgroundColor: group.color }}
         />
         {editName ? (
-          <div className="flex items-center gap-2 max-w-xs mx-auto">
+          <div className="flex items-center gap-2 max-w-xs">
             <input
               type="text"
               value={tempName}
               onChange={(e) => setTempName(e.target.value)}
               maxLength={32}
-              className="flex-1 bg-black/5 dark:bg-white/5 rounded-xl px-3 py-2 font-bold text-center focus:outline-none focus:ring-2 focus:ring-rk-orange"
+              className="flex-1 bg-black/[0.045] dark:bg-white/[0.06] rounded-xl px-3 py-2 font-black text-center text-[15px] outline-none focus:ring-2 focus:ring-rk-orange/40"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleRenameSave()}
             />
             <button onClick={handleRenameSave} className="p-2 rounded-xl bg-rk-orange text-white">
-              <Check size={18} />
+              <Check size={16} />
             </button>
           </div>
         ) : (
-          <button onClick={() => { setTempName(group.name); setEditName(true) }} className="text-xl font-black">
+          <button
+            onClick={() => { setTempName(group.name); setEditName(true) }}
+            className="text-[19px] font-black tracking-tight"
+          >
             {group.name}
           </button>
         )}
-        <p className="text-xs text-rk-ink/60 dark:text-rk-cream/60 mt-2">
+        <p className="text-[11.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 mt-2">
           {memberCount} {memberCount === 1 ? 'miembro' : 'miembros'} · {formatPoints(memberPoints)} pts actuales · {formatPoints(group.totalPoints ?? 0)} pts históricos
         </p>
-      </GlassCard>
+      </div>
 
       {/* Cambiar color */}
-      <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 mb-2 px-1">
+      <section className="mt-6">
+        <h3 className="text-[10px] font-extrabold uppercase tracking-[1.3px] text-rk-ink/40 dark:text-rk-cream/40 mb-2.5">
           Color
         </h3>
-        <GlassCard className="!p-3">
-          <div className="flex flex-wrap gap-2 justify-center">
-            {GROUP_COLOR_PALETTE.map((c) => (
-              <button
-                key={c}
-                onClick={() => handleChangeColor(c)}
-                className={`w-10 h-10 rounded-xl transition-transform ${group.color === c ? 'ring-2 ring-offset-2 ring-rk-orange dark:ring-offset-rk-ink-card scale-110' : ''}`}
-                style={{ backgroundColor: c }}
-              />
-            ))}
-          </div>
-        </GlassCard>
+        <div className="flex flex-wrap gap-2 justify-center py-1">
+          {GROUP_COLOR_PALETTE.map((c) => (
+            <button
+              key={c}
+              onClick={() => handleChangeColor(c)}
+              className={cn(
+                'w-9 h-9 rounded-xl transition-transform',
+                group.color === c && 'ring-2 ring-offset-2 ring-rk-orange dark:ring-offset-rk-ink scale-110'
+              )}
+              style={{ backgroundColor: c }}
+            />
+          ))}
+        </div>
       </section>
 
       {/* Miembros */}
-      <section>
-        <div className="flex items-center justify-between mb-2 px-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
+      <section className="mt-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-[10px] font-extrabold uppercase tracking-[1.3px] text-rk-ink/40 dark:text-rk-cream/40">
             Miembros ({memberCount})
           </h3>
           <button
             onClick={() => setShowPicker(true)}
-            className="text-xs font-semibold text-rk-orange flex items-center gap-1"
+            className="text-[11px] font-extrabold text-rk-orange flex items-center gap-1"
           >
-            <UserPlus size={14} /> Añadir
+            <UserPlus size={12} /> Añadir
           </button>
         </div>
 
         {members.length === 0 ? (
-          <GlassCard className="text-center py-6 text-sm text-rk-ink/60 dark:text-rk-cream/60">
+          <div className="text-center py-8 text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
             Aún no hay miembros en este equipo
-          </GlassCard>
+          </div>
         ) : (
-          <GlassCard className="!p-0 overflow-hidden">
+          <div>
+            <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
             {members.map((m, i) => (
-              <div key={m.id}>
-                {i > 0 && <div className="border-t border-black/5 dark:border-white/5" />}
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm truncate">{m.name}</div>
-                    <div className="text-xs text-rk-ink/50 dark:text-rk-cream/50">
-                      {formatPoints(m.points ?? 0)} pts
-                    </div>
+              <div
+                key={m.id}
+                className={cn(
+                  'flex items-center gap-3 py-2.5',
+                  i < members.length - 1 &&
+                    'border-b border-black/[0.075] dark:border-white/[0.09]'
+                )}
+              >
+                <Avatar name={m.name} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-[12.5px] truncate">{m.name}</div>
+                  <div className="text-[10.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
+                    {formatPoints(m.points ?? 0)} pts
                   </div>
-                  <button
-                    onClick={() => handleRemoveMember(m)}
-                    className="p-1.5 rounded-full bg-black/5 dark:bg-white/5 text-red-500"
-                    aria-label="Quitar del equipo"
-                  >
-                    <X size={14} />
-                  </button>
                 </div>
+                <button
+                  onClick={() => handleRemoveMember(m)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500/70 hover:bg-red-500/[0.08] hover:text-red-500 transition"
+                  aria-label="Quitar del equipo"
+                >
+                  <X size={13} />
+                </button>
               </div>
             ))}
-          </GlassCard>
+          </div>
         )}
       </section>
 
       {/* Eliminar equipo */}
-      {confirmDelete ? (
-        <GlassCard className="space-y-3 border border-red-500/30">
-          <p className="text-sm font-semibold text-center">
-            ¿Eliminar "{group.name}"?
-          </p>
-          <p className="text-xs text-rk-ink/60 dark:text-rk-cream/60 text-center">
-            Los {memberCount} {memberCount === 1 ? 'miembro' : 'miembros'} quedará{memberCount === 1 ? '' : 'n'} sin equipo. Los puntos individuales no se pierden.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setConfirmDelete(false)} className="btn-secondary">Cancelar</button>
-            <button onClick={handleDelete} className="rounded-2xl bg-red-500 text-white font-bold py-3 active:scale-[0.98] transition-transform">
-              Eliminar
-            </button>
+      <div className="mt-8 pt-5 border-t border-black/[0.075] dark:border-white/[0.09]">
+        {confirmDelete ? (
+          <div className="space-y-3">
+            <p className="text-[13px] font-bold text-center">
+              ¿Eliminar "{group.name}"?
+            </p>
+            <p className="text-[11.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 text-center leading-relaxed">
+              Los {memberCount} {memberCount === 1 ? 'miembro' : 'miembros'} quedará{memberCount === 1 ? '' : 'n'} sin equipo. Los puntos individuales no se pierden.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setConfirmDelete(false)} className="btn-secondary">Cancelar</button>
+              <button
+                onClick={handleDelete}
+                className="rounded-2xl bg-red-500 text-white font-bold py-3 active:scale-[0.98] transition-transform"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
-        </GlassCard>
-      ) : (
-        <button
-          onClick={() => setConfirmDelete(true)}
-          className="w-full rounded-2xl bg-red-500/10 text-red-500 font-bold py-3 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-        >
-          <Trash2 size={16} /> Eliminar equipo
-        </button>
-      )}
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-[12.5px] font-bold text-red-500/80 active:opacity-60 transition-opacity"
+          >
+            <Trash2 size={14} /> Eliminar equipo
+          </button>
+        )}
+      </div>
 
       {showPicker && (
         <AsignarAgenteModal
@@ -411,9 +436,6 @@ function DetalleEquipo({ group, agents, onBack }) {
   )
 }
 
-// ============================================================
-// Modal: Añadir agentes al equipo
-// ============================================================
 function AsignarAgenteModal({ group, agents, onClose }) {
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState(null)
@@ -477,17 +499,18 @@ function AsignarAgenteModal({ group, agents, onClose }) {
                 key={a.id}
                 onClick={() => handleAssign(a)}
                 disabled={busy === a.id}
-                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-rk-orange/10 active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-rk-orange/[0.07] active:scale-[0.98] transition-all disabled:opacity-50"
               >
+                <Avatar name={a.name} size="sm" />
                 <div className="flex-1 text-left min-w-0">
-                  <div className="font-semibold text-sm truncate">{a.name}</div>
+                  <div className="font-bold text-[12.5px] truncate">{a.name}</div>
                   {a.groupId && (
-                    <div className="text-xs text-rk-ink/50 dark:text-rk-cream/50">
+                    <div className="text-[10.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
                       Actualmente en otro equipo
                     </div>
                   )}
                 </div>
-                <UserPlus size={16} className="text-rk-orange shrink-0" />
+                <UserPlus size={15} className="text-rk-orange shrink-0" />
               </button>
             ))
           )}

@@ -11,9 +11,9 @@ import { useAuth } from '../context/AuthContext'
 import { useUsers } from '../hooks/useUsers'
 import { useGroups } from '../hooks/useGroups'
 import { isAdminRole } from '../data/seedUsers'
+import { cn } from '../lib/utils'
 import { createAgent, removeAgent } from '../lib/userAdmin'
 import Header from '../components/layout/Header'
-import GlassCard from '../components/ui/GlassCard'
 import Avatar from '../components/ui/Avatar'
 
 export default function GestionAgentes() {
@@ -41,7 +41,6 @@ export default function GestionAgentes() {
         )
       : users
     return [...list].sort((a, b) => {
-      // Admins primero, luego por nombre
       const aAdmin = isAdminRole(a.role) ? 0 : 1
       const bAdmin = isAdminRole(b.role) ? 0 : 1
       if (aAdmin !== bAdmin) return aAdmin - bAdmin
@@ -53,95 +52,113 @@ export default function GestionAgentes() {
   const totalAdmins = users.filter((u) => isAdminRole(u.role)).length
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="animate-fade-in pb-6">
       <Header title="Agentes" subtitle="Gestión Admin" />
 
-      <button
-        onClick={() => setShowAdd(true)}
-        className="btn-primary w-full flex items-center justify-center gap-2"
-      >
-        <UserPlus size={18} /> Añadir agente
-      </button>
-
-      {/* Totales */}
-      <div className="grid grid-cols-2 gap-3">
-        <GlassCard className="!p-3 text-center">
-          <div className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
+      {/* Totales en línea */}
+      <div className="flex border-y border-black/[0.075] dark:border-white/[0.09] mt-1">
+        <div className="flex-1 py-3.5 text-center">
+          <div className="text-[22px] font-black tracking-tight leading-none">
+            {totalAgents}
+          </div>
+          <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-1">
             Agentes
           </div>
-          <div className="text-2xl font-black mt-0.5">{totalAgents}</div>
-        </GlassCard>
-        <GlassCard className="!p-3 text-center">
-          <div className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50">
+        </div>
+        <div className="w-px my-2 bg-black/[0.075] dark:bg-white/[0.09]" />
+        <div className="flex-1 py-3.5 text-center">
+          <div className="text-[22px] font-black tracking-tight leading-none">
+            {totalAdmins}
+          </div>
+          <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-1">
             Admins
           </div>
-          <div className="text-2xl font-black mt-0.5">{totalAdmins}</div>
-        </GlassCard>
+        </div>
       </div>
 
-      {/* Buscador */}
-      <div className="relative">
-        <Search
-          size={16}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-rk-ink/40 dark:text-rk-cream/40"
-        />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o email…"
-          className="w-full bg-black/5 dark:bg-white/5 rounded-2xl pl-11 pr-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-rk-orange"
-        />
+      {/* Buscador + añadir */}
+      <div className="flex items-center gap-2 mt-4">
+        <div className="relative flex-1">
+          <Search
+            size={14}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rk-ink/35 dark:text-rk-cream/35"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o email…"
+            className="w-full bg-black/[0.045] dark:bg-white/[0.06] rounded-xl pl-9 pr-3 py-2.5 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-rk-orange/35 placeholder:text-rk-ink/35 dark:placeholder:text-rk-cream/35"
+          />
+        </div>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="w-10 h-10 rounded-xl bg-rk-orange text-white flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+          aria-label="Añadir agente"
+        >
+          <UserPlus size={17} />
+        </button>
       </div>
 
       {/* Lista */}
-      <div className="space-y-2">
-        {filtered.length === 0 && (
-          <GlassCard className="text-center py-6 text-sm text-rk-ink/60 dark:text-rk-cream/60">
-            No hay resultados
-          </GlassCard>
-        )}
-        {filtered.map((u) => {
-          const isSelf = u.id === firebaseUser?.uid
-          const group = u.groupId ? groupById[u.groupId] : null
-          return (
-            <GlassCard key={u.id} className="!p-3 flex items-center gap-3">
-              <Avatar name={u.name} size="sm" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-sm truncate">{u.name}</span>
-                  {isAdminRole(u.role) && (
-                    <span className="shrink-0 text-[10px] font-black uppercase bg-rk-orange/10 text-rk-orange px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                      <Shield size={9} /> Admin
+      {filtered.length === 0 ? (
+        <div className="text-center py-14 text-[12.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45">
+          No hay resultados
+        </div>
+      ) : (
+        <div className="mt-2">
+          <div className="h-px bg-black/[0.075] dark:bg-white/[0.09]" />
+          {filtered.map((u, i) => {
+            const isSelf = u.id === firebaseUser?.uid
+            const group = u.groupId ? groupById[u.groupId] : null
+            return (
+              <div
+                key={u.id}
+                className={cn(
+                  'flex items-center gap-3 py-3',
+                  i < filtered.length - 1 &&
+                    'border-b border-black/[0.075] dark:border-white/[0.09]'
+                )}
+              >
+                <Avatar name={u.name} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-[13px] truncate">
+                      {u.name}
                     </span>
+                    {isAdminRole(u.role) && (
+                      <span className="shrink-0 text-[8.5px] font-black uppercase text-rk-orange flex items-center gap-0.5">
+                        <Shield size={9} /> Admin
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 truncate">
+                    {u.email}
+                  </div>
+                  {group && (
+                    <div className="text-[10.5px] font-semibold text-rk-ink/35 dark:text-rk-cream/35 flex items-center gap-1.5 mt-0.5">
+                      <span
+                        className="w-[7px] h-[7px] rounded-full"
+                        style={{ backgroundColor: group.color }}
+                      />
+                      {group.name}
+                    </div>
                   )}
                 </div>
-                <div className="text-xs text-rk-ink/60 dark:text-rk-cream/60 truncate">
-                  {u.email}
-                </div>
-                {group && (
-                  <div className="text-xs text-rk-ink/40 dark:text-rk-cream/40 flex items-center gap-1 mt-0.5">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: group.color }}
-                    />
-                    {group.name}
-                  </div>
+                {!isSelf && (
+                  <button
+                    onClick={() => setRemoving(u)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500/70 hover:bg-red-500/[0.08] hover:text-red-500 transition shrink-0"
+                    aria-label="Eliminar"
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 )}
               </div>
-              {!isSelf && (
-                <button
-                  onClick={() => setRemoving(u)}
-                  className="p-2 rounded-xl bg-red-500/10 text-red-500 shrink-0"
-                  aria-label="Eliminar"
-                >
-                  <Trash2 size={16} />
-                </button>
-              )}
-            </GlassCard>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
       {showAdd && (
         <AddAgentModal groups={groups} onClose={() => setShowAdd(false)} />
@@ -301,7 +318,7 @@ function AddAgentModal({ groups, onClose }) {
 function Field({ label, value, onChange, placeholder, type = 'text', hint, autoFocus }) {
   return (
     <div>
-      <label className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 block mb-1.5">
+      <label className="text-[10px] font-extrabold uppercase tracking-[1.2px] text-rk-ink/40 dark:text-rk-cream/40 block mb-1.5">
         {label}
       </label>
       <input
@@ -312,10 +329,10 @@ function Field({ label, value, onChange, placeholder, type = 'text', hint, autoF
         autoFocus={autoFocus}
         autoCapitalize={type === 'email' ? 'none' : 'words'}
         autoComplete="off"
-        className="w-full bg-black/5 dark:bg-white/5 rounded-2xl px-4 py-3 font-semibold focus:outline-none focus:ring-2 focus:ring-rk-orange"
+        className="w-full bg-black/[0.045] dark:bg-white/[0.06] rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold outline-none focus:ring-2 focus:ring-rk-orange/40 placeholder:text-rk-ink/30 dark:placeholder:text-rk-cream/30"
       />
       {hint && (
-        <p className="text-xs text-rk-ink/40 dark:text-rk-cream/40 mt-1">{hint}</p>
+        <p className="text-[10.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1 leading-snug">{hint}</p>
       )}
     </div>
   )

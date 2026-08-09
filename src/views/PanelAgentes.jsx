@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import {
-  ArrowLeft, UserPlus, Search, Trash2, X, AlertTriangle, Shield,
+  UserPlus, Search, Trash2, X, AlertTriangle, Shield,
   History, TrendingUp, TrendingDown,
 } from 'lucide-react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
@@ -57,56 +57,47 @@ export default function PanelAgentes() {
   const inTeams = users.filter((u) => !isAdminRole(u.role) && u.groupId).length
 
   return (
-    <div className="space-y-5 animate-fade-in min-w-[1024px]">
-      {/* HEADER */}
-      <header className="flex items-center pb-5 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <Link
-          to="/panel"
-          className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition mr-4"
-        >
-          <ArrowLeft size={13} /> Panel
-        </Link>
+    <div className="min-w-[900px] max-w-[1180px] animate-fade-in">
+      <div className="flex items-start justify-between">
         <div>
-          <p className="text-[10px] font-bold tracking-[2px] text-rk-orange">
-            GESTIÓN
+          <h1 className="text-[27px] font-black tracking-tight">Agentes</h1>
+          <p className="text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1">
+            {totalAgents} agentes · {totalAdmins} administradores
           </p>
-          <h1 className="text-2xl font-black tracking-tight mt-1">Agentes</h1>
         </div>
-
         <button
           onClick={() => setShowAdd(true)}
-          className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-rk-orange text-white font-extrabold text-sm rounded-xl shadow-orange-glow-sm hover:bg-rk-orange-dark transition"
+          className="flex items-center gap-2 px-4 py-2.5 bg-rk-orange text-white font-extrabold text-[12.5px] rounded-lg hover:bg-rk-orange-dark transition"
         >
-          <UserPlus size={16} /> Nuevo agente
+          <UserPlus size={15} /> Nuevo agente
         </button>
-      </header>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
-        <MiniKpi label="AGENTES" value={totalAgents} />
-        <MiniKpi label="ADMINS" value={totalAdmins} />
-        <MiniKpi label="EN UN EQUIPO" value={`${inTeams} / ${totalAgents}`} />
       </div>
 
-      {/* Search */}
-      <div className="relative">
+      {/* KPIs sin cajas */}
+      <div className="flex border-y border-black/[0.08] dark:border-white/[0.09] mt-6">
+        <Kpi label="Agentes" value={totalAgents} />
+        <Kpi label="Administradores" value={totalAdmins} />
+        <Kpi label="En un equipo" value={`${inTeams} / ${totalAgents}`} />
+      </div>
+
+      {/* Buscador */}
+      <div className="relative mt-5">
         <Search
-          size={16}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-rk-ink/40 dark:text-rk-cream/40"
+          size={14}
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rk-ink/35 dark:text-rk-cream/35"
         />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por nombre o email…"
-          className="w-full pl-11 pr-4 py-3 bg-white dark:bg-rk-ink-card border border-black/[0.04] dark:border-white/[0.05] rounded-2xl font-semibold focus:outline-none focus:ring-2 focus:ring-rk-orange"
+          className="w-full max-w-sm pl-9 pr-3 py-2.5 bg-black/[0.04] dark:bg-white/[0.06] rounded-lg text-[13px] font-semibold outline-none focus:ring-2 focus:ring-rk-orange/35 placeholder:text-rk-ink/30 dark:placeholder:text-rk-cream/30"
         />
       </div>
 
       {/* Tabla */}
-      <div className="bg-white dark:bg-rk-ink-card rounded-2xl border border-black/[0.04] dark:border-white/[0.05] shadow-soft overflow-hidden">
-        {/* Header row */}
-        <div className="grid grid-cols-[44px_1.4fr_2fr_0.9fr_1.2fr_0.7fr_56px] gap-3 px-5 py-3 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/[0.04] dark:border-white/[0.05] text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50">
+      <div className="bg-white dark:bg-rk-ink-card rounded-xl border border-black/[0.07] dark:border-white/[0.08] overflow-hidden mt-4">
+        <div className="grid grid-cols-[44px_1.4fr_2fr_0.9fr_1.2fr_0.7fr_44px] gap-3 px-5 py-2.5 border-b border-black/[0.055] dark:border-white/[0.06] text-[9.5px] font-bold text-rk-ink/40 dark:text-rk-cream/40">
           <div />
           <div>NOMBRE</div>
           <div>EMAIL</div>
@@ -117,13 +108,13 @@ export default function PanelAgentes() {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="py-12 text-center text-sm text-rk-ink/50 dark:text-rk-cream/50">
+          <div className="py-12 text-center text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
             {search
               ? 'Nadie coincide con esa búsqueda.'
               : 'No hay usuarios.'}
           </div>
         ) : (
-          <div className="divide-y divide-black/[0.04] dark:divide-white/[0.05]">
+          <div className="divide-y divide-black/[0.055] dark:divide-white/[0.06]">
             {filtered.map((u) => {
               const group = u.groupId ? groupById[u.groupId] : null
               const isAdmin_ = isAdminRole(u.role)
@@ -131,39 +122,39 @@ export default function PanelAgentes() {
               return (
                 <div
                   key={u.id}
-                  className="grid grid-cols-[44px_1.4fr_2fr_0.9fr_1.2fr_0.7fr_56px] gap-3 px-5 py-3 items-center hover:bg-black/[0.015] dark:hover:bg-white/[0.015]"
+                  className="grid grid-cols-[44px_1.4fr_2fr_0.9fr_1.2fr_0.7fr_44px] gap-3 px-5 py-2.5 items-center hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition-colors group"
                 >
                   <Avatar name={u.name} size="sm" />
                   <button
                     onClick={() => setHistoryUser(u)}
-                    className="font-bold text-sm truncate text-left hover:text-rk-orange transition flex items-center gap-1.5 group"
+                    className="font-extrabold text-[12.5px] truncate text-left hover:text-rk-orange transition flex items-center gap-1.5"
                     title="Ver historial de puntos"
                   >
                     <span className="truncate">{u.name}</span>
                     <History
-                      size={12}
+                      size={11}
                       className="shrink-0 opacity-0 group-hover:opacity-100 transition text-rk-orange"
                     />
                   </button>
-                  <div className="text-xs text-rk-ink/70 dark:text-rk-cream/70 truncate">
+                  <div className="text-[11.5px] font-semibold text-rk-ink/50 dark:text-rk-cream/50 truncate">
                     {u.email}
                   </div>
                   <div>
                     {isAdmin_ ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rk-orange/10 text-rk-orange text-[10px] font-extrabold">
-                        <Shield size={10} /> Admin
+                      <span className="inline-flex items-center gap-1 text-[9.5px] font-black uppercase text-rk-orange">
+                        <Shield size={9} /> Admin
                       </span>
                     ) : (
-                      <span className="text-[11px] font-bold text-rk-ink/60 dark:text-rk-cream/60">
+                      <span className="text-[11px] font-bold text-rk-ink/50 dark:text-rk-cream/50">
                         {u.role === 'Agente Comercial' ? 'Agente' : u.role}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs flex items-center gap-2 min-w-0">
+                  <div className="text-[11.5px] flex items-center gap-2 min-w-0">
                     {group ? (
                       <>
                         <div
-                          className="w-2.5 h-2.5 rounded-sm shrink-0"
+                          className="w-[7px] h-[7px] rounded-sm shrink-0"
                           style={{ backgroundColor: group.color }}
                         />
                         <span className="font-bold truncate">
@@ -171,25 +162,25 @@ export default function PanelAgentes() {
                         </span>
                       </>
                     ) : (
-                      <span className="text-rk-ink/40 dark:text-rk-cream/40">
+                      <span className="text-rk-ink/30 dark:text-rk-cream/30 font-semibold">
                         Sin equipo
                       </span>
                     )}
                   </div>
-                  <div className="text-right text-sm font-extrabold tabular-nums">
+                  <div className="text-right text-[13px] font-black tabular-nums">
                     {isAdmin_ ? '—' : formatPoints(u.points || 0)}
                   </div>
                   <button
                     onClick={() => setRemoving(u)}
                     disabled={isSelf}
-                    className="w-9 h-9 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/15 transition flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500/70 hover:bg-red-500/[0.08] hover:text-red-500 transition disabled:opacity-25 disabled:cursor-not-allowed justify-self-end"
                     title={
                       isSelf
                         ? 'No puedes borrarte a ti mismo'
                         : 'Eliminar usuario'
                     }
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               )
@@ -211,19 +202,20 @@ export default function PanelAgentes() {
   )
 }
 
-// ====================================================================
-// Mini KPI card
-// ====================================================================
-function MiniKpi({ label, value }) {
+function Kpi({ label, value }) {
   return (
-    <div className="p-4 rounded-2xl bg-white dark:bg-rk-ink-card border border-black/[0.04] dark:border-white/[0.05] shadow-soft">
-      <div className="text-[9px] font-extrabold tracking-[2px] text-rk-ink/60 dark:text-rk-cream/60">
+    <div className="flex-1 py-3.5 px-1 relative first:pl-0">
+      <div className="absolute left-0 top-[20%] h-[60%] w-px bg-black/[0.08] dark:bg-white/[0.09] first:hidden" />
+      <div className="text-[9.5px] font-bold text-rk-ink/40 dark:text-rk-cream/40">
         {label}
       </div>
-      <div className="text-2xl font-black mt-1 -tracking-wide">{value}</div>
+      <div className="text-[24px] font-black tracking-tight leading-none mt-1">
+        {value}
+      </div>
     </div>
   )
 }
+
 
 // ====================================================================
 // Add agent modal — misma lógica que la versión móvil
@@ -359,7 +351,7 @@ function AddAgentModal({ groups, onClose }) {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full mt-4 px-5 py-3 bg-rk-orange text-white font-extrabold rounded-xl shadow-orange-glow-sm hover:bg-rk-orange-dark transition disabled:opacity-50"
+              className="w-full mt-4 px-5 py-3 bg-rk-orange text-white font-extrabold text-[13.5px] rounded-xl hover:bg-rk-orange-dark transition disabled:opacity-50"
             >
               {loading ? 'Creando…' : 'Crear agente'}
             </button>
@@ -373,7 +365,7 @@ function AddAgentModal({ groups, onClose }) {
 function Field({ label, value, onChange, placeholder, type = 'text', hint, autoFocus }) {
   return (
     <div>
-      <label className="text-xs font-semibold uppercase tracking-wider text-rk-ink/50 dark:text-rk-cream/50 block mb-1.5">
+      <label className="text-[10px] font-extrabold uppercase tracking-[1.2px] text-rk-ink/40 dark:text-rk-cream/40 block mb-1.5">
         {label}
       </label>
       <input
@@ -384,10 +376,10 @@ function Field({ label, value, onChange, placeholder, type = 'text', hint, autoF
         autoFocus={autoFocus}
         autoCapitalize={type === 'email' ? 'none' : 'words'}
         autoComplete="off"
-        className="w-full bg-black/5 dark:bg-white/5 rounded-2xl px-4 py-3 font-semibold focus:outline-none focus:ring-2 focus:ring-rk-orange"
+        className="w-full bg-black/[0.045] dark:bg-white/[0.06] rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold outline-none focus:ring-2 focus:ring-rk-orange/40 placeholder:text-rk-ink/30 dark:placeholder:text-rk-cream/30"
       />
       {hint && (
-        <p className="text-xs text-rk-ink/40 dark:text-rk-cream/40 mt-1">{hint}</p>
+        <p className="text-[10.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1 leading-snug">{hint}</p>
       )}
     </div>
   )
@@ -398,10 +390,10 @@ function RoleButton({ active, onClick, label }) {
     <button
       onClick={onClick}
       className={cn(
-        'rounded-2xl py-3 font-extrabold text-sm transition',
+        'rounded-xl py-2.5 font-extrabold text-[13px] transition',
         active
-          ? 'bg-rk-orange text-white shadow-orange-glow-sm'
-          : 'bg-black/5 dark:bg-white/5 text-rk-ink dark:text-rk-cream'
+          ? 'bg-rk-ink dark:bg-rk-cream text-rk-cream dark:text-rk-ink'
+          : 'bg-black/[0.045] dark:bg-white/[0.06] text-rk-ink/55 dark:text-rk-cream/55'
       )}
     >
       {label}
@@ -556,7 +548,6 @@ function HistoryDrawer({ user, onClose }) {
   const approved = useMemo(() => rows.filter((r) => r.status === 'approved'), [rows])
   const visible = onlyApproved ? approved : rows
 
-  // Resumen por tipo de acción (solo aprobadas: es de donde vienen los puntos)
   const breakdown = useMemo(() => {
     const map = {}
     for (const r of approved) {
@@ -579,82 +570,85 @@ function HistoryDrawer({ user, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end animate-fade-in"
+      className="fixed inset-0 z-50 bg-black/45 flex justify-end animate-fade-in"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[520px] h-full bg-rk-cream dark:bg-rk-ink overflow-y-auto shadow-2xl"
+        className="w-full max-w-[480px] h-full bg-rk-cream dark:bg-rk-ink overflow-y-auto border-l border-black/[0.08] dark:border-white/[0.09]"
       >
         {/* Cabecera */}
-        <div className="sticky top-0 z-10 bg-rk-cream/95 dark:bg-rk-ink/95 backdrop-blur border-b border-black/[0.06] dark:border-white/[0.06] px-6 py-5">
+        <div className="sticky top-0 z-10 bg-rk-cream/95 dark:bg-rk-ink/95 backdrop-blur border-b border-black/[0.08] dark:border-white/[0.09] px-6 py-5">
           <div className="flex items-start gap-3">
             <Avatar name={user.name} size="md" />
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-extrabold tracking-[2px] text-rk-orange">
-                HISTORIAL DE PUNTOS
+              <p className="text-[9.5px] font-extrabold uppercase tracking-[1.6px] text-rk-orange">
+                Historial de puntos
               </p>
-              <h2 className="text-xl font-black truncate mt-0.5">{user.name}</h2>
-              <p className="text-xs text-rk-ink/60 dark:text-rk-cream/60 truncate">
+              <h2 className="text-[19px] font-black truncate mt-0.5 tracking-tight">{user.name}</h2>
+              <p className="text-[11.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 truncate">
                 {user.email}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center transition shrink-0"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-rk-ink/50 dark:text-rk-cream/50 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition shrink-0"
               aria-label="Cerrar"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-6 py-5">
           {loading ? (
-            <p className="text-center text-sm text-rk-ink/60 dark:text-rk-cream/60 py-12">
+            <p className="text-center text-[12.5px] font-semibold text-rk-ink/45 dark:text-rk-cream/45 py-12">
               Cargando historial…
             </p>
           ) : error ? (
-            <div className="bg-red-500/10 text-red-500 rounded-2xl px-4 py-3 text-sm font-bold">
+            <div className="bg-red-500/10 text-red-500 rounded-xl px-4 py-3 text-[12.5px] font-bold">
               {error}
             </div>
           ) : (
             <>
-              {/* Totales */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-4 border border-black/[0.04] dark:border-white/[0.05]">
-                  <div className="text-[9px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50">
-                    PUNTOS SUMADOS
-                  </div>
-                  <div className="text-2xl font-black mt-1 text-rk-orange">
+              {/* Totales sin cajas */}
+              <div className="flex border-y border-black/[0.08] dark:border-white/[0.09]">
+                <div className="flex-1 py-3.5 text-center">
+                  <div className="text-[22px] font-black text-rk-orange tracking-tight leading-none">
                     {formatPoints(totalPoints)}
                   </div>
-                </div>
-                <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-4 border border-black/[0.04] dark:border-white/[0.05]">
-                  <div className="text-[9px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50">
-                    ACCIONES APROBADAS
+                  <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-1">
+                    Puntos sumados
                   </div>
-                  <div className="text-2xl font-black mt-1">{approved.length}</div>
+                </div>
+                <div className="w-px my-2 bg-black/[0.08] dark:bg-white/[0.09]" />
+                <div className="flex-1 py-3.5 text-center">
+                  <div className="text-[22px] font-black tracking-tight leading-none">
+                    {approved.length}
+                  </div>
+                  <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-rk-ink/40 dark:text-rk-cream/40 mt-1">
+                    Acciones aprobadas
+                  </div>
                 </div>
               </div>
 
               {/* Desglose por tipo */}
               {breakdown.length > 0 && (
-                <div>
-                  <h3 className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50 mb-2">
-                    DE DÓNDE VIENEN SUS PUNTOS
+                <div className="mt-6">
+                  <h3 className="text-[10px] font-extrabold uppercase tracking-[1.3px] text-rk-ink/40 dark:text-rk-cream/40 mb-2">
+                    De dónde vienen sus puntos
                   </h3>
-                  <div className="bg-white dark:bg-rk-ink-card rounded-2xl border border-black/[0.04] dark:border-white/[0.05] divide-y divide-black/[0.04] dark:divide-white/[0.05] overflow-hidden">
+                  <div className="bg-white dark:bg-rk-ink-card rounded-xl border border-black/[0.07] dark:border-white/[0.08] divide-y divide-black/[0.055] dark:divide-white/[0.06] overflow-hidden">
                     {breakdown.map((b) => (
                       <div key={b.type} className="flex items-center gap-3 px-4 py-2.5">
-                        <span className="text-lg">{b.icon}</span>
-                        <span className="flex-1 text-sm font-bold truncate">{b.label}</span>
-                        <span className="text-xs text-rk-ink/50 dark:text-rk-cream/50 tabular-nums">
+                        <span className="text-[15px]">{b.icon}</span>
+                        <span className="flex-1 text-[12.5px] font-bold truncate">{b.label}</span>
+                        <span className="text-[11px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 tabular-nums">
                           ×{b.count}
                         </span>
                         <span
                           className={cn(
-                            'text-sm font-black tabular-nums w-16 text-right',
+                            'text-[13px] font-black tabular-nums w-14 text-right',
                             b.points >= 0 ? 'text-rk-orange' : 'text-red-500'
                           )}
                         >
@@ -668,25 +662,25 @@ function HistoryDrawer({ user, onClose }) {
               )}
 
               {/* Listado detallado */}
-              <div>
+              <div className="mt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50">
-                    MOVIMIENTOS ({visible.length})
+                  <h3 className="text-[10px] font-extrabold uppercase tracking-[1.3px] text-rk-ink/40 dark:text-rk-cream/40">
+                    Movimientos ({visible.length})
                   </h3>
                   <button
                     onClick={() => setOnlyApproved((v) => !v)}
-                    className="text-[11px] font-extrabold text-rk-orange hover:underline"
+                    className="text-[11px] font-extrabold text-rk-orange"
                   >
                     {onlyApproved ? 'Ver también rechazadas' : 'Solo aprobadas'}
                   </button>
                 </div>
 
                 {visible.length === 0 ? (
-                  <div className="bg-white dark:bg-rk-ink-card rounded-2xl border border-black/[0.04] dark:border-white/[0.05] py-10 text-center text-sm text-rk-ink/50 dark:text-rk-cream/50">
+                  <div className="bg-white dark:bg-rk-ink-card rounded-xl border border-black/[0.07] dark:border-white/[0.08] py-10 text-center text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
                     Todavía no hay movimientos.
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="bg-white dark:bg-rk-ink-card rounded-xl border border-black/[0.07] dark:border-white/[0.08] divide-y divide-black/[0.055] dark:divide-white/[0.06] overflow-hidden">
                     {visible.map((r) => (
                       <MovementRow key={r.id} row={r} />
                     ))}
@@ -710,37 +704,35 @@ function MovementRow({ row }) {
   return (
     <div
       className={cn(
-        'bg-white dark:bg-rk-ink-card rounded-xl border px-4 py-2.5 flex items-center gap-3',
-        isRejected
-          ? 'border-red-500/20 opacity-70'
-          : 'border-black/[0.04] dark:border-white/[0.05]'
+        'flex items-center gap-3 px-4 py-2.5',
+        isRejected && 'opacity-55'
       )}
     >
-      <span className="text-lg shrink-0">{icon}</span>
+      <span className="text-[15px] shrink-0">{icon}</span>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-bold truncate">{row.actionLabel}</div>
-        <div className="text-[11px] text-rk-ink/50 dark:text-rk-cream/50">
+        <div className="text-[12.5px] font-bold truncate">{row.actionLabel}</div>
+        <div className="text-[10.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
           {relativeDate(row.createdAt)}
           {isRejected && ' · rechazada'}
           {!isApproved && !isRejected && ' · pendiente'}
         </div>
         {row.notes && (
-          <div className="text-[11px] text-rk-ink/60 dark:text-rk-cream/60 mt-0.5 line-clamp-2">
+          <div className="text-[10.5px] font-medium text-rk-ink/55 dark:text-rk-cream/55 mt-0.5 line-clamp-2">
             {row.notes}
           </div>
         )}
       </div>
       <div
         className={cn(
-          'text-sm font-black tabular-nums shrink-0 flex items-center gap-1',
+          'text-[13px] font-black tabular-nums shrink-0 flex items-center gap-1',
           isRejected
-            ? 'text-rk-ink/40 dark:text-rk-cream/40 line-through'
+            ? 'text-rk-ink/35 dark:text-rk-cream/35 line-through'
             : negative
             ? 'text-red-500'
             : 'text-rk-orange'
         )}
       >
-        {isApproved && (negative ? <TrendingDown size={13} /> : <TrendingUp size={13} />)}
+        {isApproved && (negative ? <TrendingDown size={12} /> : <TrendingUp size={12} />)}
         {negative ? '' : '+'}
         {row.points}
       </div>
