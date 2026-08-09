@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, Check, Minus, Plus } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
+import { ClipboardList, Check, Minus, Plus } from 'lucide-react'
 import {
   collection, doc, writeBatch, serverTimestamp, increment,
 } from 'firebase/firestore'
@@ -169,40 +169,28 @@ export default function PanelPuntos() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in min-w-[1024px]">
-      {/* HEADER */}
-      <header className="flex items-center pb-5 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <Link
-          to="/panel"
-          className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition mr-4"
-        >
-          <ArrowLeft size={13} /> Panel
-        </Link>
-        <div>
-          <p className="text-[10px] font-bold tracking-[2px] text-rk-orange">
-            CARGA MASIVA · CRM
-          </p>
-          <h1 className="text-2xl font-black tracking-tight mt-1">
-            Cargar puntos
-          </h1>
-        </div>
-      </header>
+    <div className="min-w-[900px] max-w-[1100px] animate-fade-in">
+      {/* Cabecera */}
+      <h1 className="text-[27px] font-black tracking-tight">Cargar puntos</h1>
+      <p className="text-[12.5px] font-semibold text-rk-ink/40 dark:text-rk-cream/40 mt-1">
+        Vuelca la actividad del CRM en bloque. Se registra ya aprobado.
+      </p>
 
-      {/* Paso 1: liga */}
-      <div className="flex items-center gap-3">
-        <span className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50 w-16">
-          LIGA
+      {/* Liga */}
+      <div className="flex items-center gap-4 mt-6">
+        <span className="text-[10px] font-bold text-rk-ink/40 dark:text-rk-cream/40 w-14">
+          Liga
         </span>
-        <div className="flex gap-2">
+        <div className="inline-flex bg-black/[0.055] dark:bg-white/[0.07] rounded-lg p-[2px] gap-[2px]">
           {Object.values(LEAGUES).map((l) => (
             <button
               key={l.id}
               onClick={() => changeLeague(l.id)}
               className={cn(
-                'px-4 py-2 rounded-xl text-sm font-extrabold transition',
+                'px-3.5 py-[6px] rounded-md text-[12px] font-bold transition',
                 league === l.id
-                  ? 'bg-rk-orange text-white shadow-orange-glow-sm'
-                  : 'bg-white dark:bg-rk-ink-card border border-black/[0.04] dark:border-white/[0.05]'
+                  ? 'bg-white dark:bg-rk-ink-card shadow-sm font-extrabold'
+                  : 'text-rk-ink/45 dark:text-rk-cream/45'
               )}
             >
               {l.label}
@@ -211,21 +199,21 @@ export default function PanelPuntos() {
         </div>
       </div>
 
-      {/* Paso 2: acción */}
-      <div className="flex items-start gap-3">
-        <span className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50 w-16 pt-2.5">
-          ACCIÓN
+      {/* Acción */}
+      <div className="flex items-start gap-4 mt-3">
+        <span className="text-[10px] font-bold text-rk-ink/40 dark:text-rk-cream/40 w-14 pt-2">
+          Acción
         </span>
-        <div className="flex flex-wrap gap-2 flex-1">
+        <div className="flex flex-wrap gap-1.5 flex-1">
           {actions.map((a) => (
             <button
               key={a.id}
               onClick={() => selectAction(a.id)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition',
+                'flex items-center gap-1.5 px-3 py-[7px] rounded-lg text-[11.5px] font-bold transition border',
                 actionId === a.id
-                  ? 'bg-rk-orange text-white shadow-orange-glow-sm'
-                  : 'bg-white dark:bg-rk-ink-card border border-black/[0.04] dark:border-white/[0.05] hover:border-rk-orange/40'
+                  ? 'bg-rk-ink dark:bg-rk-cream text-rk-cream dark:text-rk-ink border-transparent font-extrabold'
+                  : 'bg-white dark:bg-rk-ink-card border-black/[0.07] dark:border-white/[0.08] hover:border-rk-orange/40'
               )}
             >
               <span>{a.icon}</span>
@@ -233,7 +221,7 @@ export default function PanelPuntos() {
               <span
                 className={cn(
                   'font-black',
-                  actionId === a.id ? 'text-white/90' : 'text-rk-orange'
+                  actionId === a.id ? 'opacity-70' : 'text-rk-orange'
                 )}
               >
                 +{a.points}
@@ -245,18 +233,18 @@ export default function PanelPuntos() {
 
       {/* Modo sumar / restar */}
       {action && (
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50 w-16">
-            MODO
+        <div className="flex items-center gap-4 mt-3">
+          <span className="text-[10px] font-bold text-rk-ink/40 dark:text-rk-cream/40 w-14">
+            Modo
           </span>
-          <div className="flex gap-2">
+          <div className="inline-flex bg-black/[0.055] dark:bg-white/[0.07] rounded-lg p-[2px] gap-[2px]">
             <button
               onClick={() => setMode('add')}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-extrabold transition',
+                'flex items-center gap-1.5 px-3.5 py-[6px] rounded-md text-[12px] font-bold transition',
                 mode === 'add'
-                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
-                  : 'bg-white dark:bg-rk-ink-card border border-black/[0.04] dark:border-white/[0.05]'
+                  ? 'bg-white dark:bg-rk-ink-card shadow-sm font-extrabold'
+                  : 'text-rk-ink/45 dark:text-rk-cream/45'
               )}
             >
               <Plus size={14} /> Sumar
@@ -264,10 +252,10 @@ export default function PanelPuntos() {
             <button
               onClick={() => setMode('subtract')}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-extrabold transition',
+                'flex items-center gap-1.5 px-3.5 py-[6px] rounded-md text-[12px] font-bold transition',
                 mode === 'subtract'
-                  ? 'bg-red-500 text-white shadow-md shadow-red-500/25'
-                  : 'bg-white dark:bg-rk-ink-card border border-black/[0.04] dark:border-white/[0.05]'
+                  ? 'bg-red-500 text-white font-extrabold'
+                  : 'text-rk-ink/45 dark:text-rk-cream/45'
               )}
             >
               <Minus size={14} /> Restar
@@ -305,14 +293,14 @@ export default function PanelPuntos() {
       {/* Paso 3: grid de personas */}
       {action ? (
         <>
-          <div className="bg-white dark:bg-rk-ink-card rounded-2xl border border-black/[0.04] dark:border-white/[0.05] shadow-soft overflow-hidden">
-            <div className="grid grid-cols-[44px_1.6fr_1fr_180px] gap-3 px-5 py-3 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/[0.04] dark:border-white/[0.05] text-[10px] font-extrabold tracking-[2px] text-rk-ink/50 dark:text-rk-cream/50">
+          <div className="bg-white dark:bg-rk-ink-card rounded-xl border border-black/[0.07] dark:border-white/[0.08] overflow-hidden">
+            <div className="grid grid-cols-[44px_1.6fr_1fr_180px] gap-3 px-5 py-2.5 border-b border-black/[0.055] dark:border-white/[0.06] text-[9.5px] font-bold text-rk-ink/40 dark:text-rk-cream/40">
               <div />
               <div>NOMBRE</div>
               <div>ROL</div>
               <div className="text-center">{isDirect ? 'PUNTOS' : 'Nº DE VECES'}</div>
             </div>
-            <div className="divide-y divide-black/[0.04] dark:divide-white/[0.05]">
+            <div className="divide-y divide-black/[0.055] dark:divide-white/[0.06]">
               {competitors.map((u) => {
                 const n = counts[u.id] || 0
                 return (
@@ -324,8 +312,8 @@ export default function PanelPuntos() {
                     )}
                   >
                     <Avatar name={u.name} size="sm" />
-                    <div className="font-bold text-sm truncate">{u.name}</div>
-                    <div className="text-[11px] font-bold text-rk-ink/60 dark:text-rk-cream/60">
+                    <div className="font-bold text-[12.5px] truncate">{u.name}</div>
+                    <div className="text-[11px] font-semibold text-rk-ink/40 dark:text-rk-cream/40">
                       {u.role === 'Codirector' ? 'Staff (Admin)' : u.role}
                     </div>
                     <div className="flex items-center justify-center gap-2">
@@ -366,7 +354,7 @@ export default function PanelPuntos() {
           </div>
 
           {/* Barra de resumen fija abajo */}
-          <div className="sticky bottom-4 flex items-center gap-4 bg-rk-ink dark:bg-rk-ink-card text-rk-cream rounded-2xl px-5 py-4 shadow-2xl">
+          <div className="sticky bottom-4 flex items-center gap-4 bg-rk-ink dark:bg-rk-ink-card text-rk-cream rounded-2xl px-5 py-3.5 shadow-xl border border-white/10">
             <ClipboardList size={18} className="text-rk-orange" />
             <div className="flex-1 text-sm">
               {entries.length === 0 ? (
@@ -396,10 +384,10 @@ export default function PanelPuntos() {
               onClick={handleSubmit}
               disabled={entries.length === 0 || submitting}
               className={cn(
-                'px-6 py-2.5 text-white font-extrabold text-sm rounded-xl transition disabled:opacity-40',
+                'px-5 py-2 text-white font-extrabold text-[12.5px] rounded-lg transition disabled:opacity-40',
                 mode === 'subtract'
-                  ? 'bg-red-500 hover:bg-red-600 shadow-md shadow-red-500/25'
-                  : 'bg-rk-orange hover:bg-rk-orange-dark shadow-orange-glow-sm'
+                  ? 'bg-red-500 hover:bg-red-600'
+                  : 'bg-rk-orange hover:bg-rk-orange-dark'
               )}
             >
               {submitting ? 'Procesando…' : (mode === 'subtract' ? 'Restar puntos' : 'Registrar puntos')}
@@ -407,7 +395,7 @@ export default function PanelPuntos() {
           </div>
         </>
       ) : (
-        <div className="bg-white dark:bg-rk-ink-card rounded-2xl p-12 border border-black/[0.04] dark:border-white/[0.05] shadow-soft text-center">
+        <div className="bg-white dark:bg-rk-ink-card rounded-xl p-12 border border-black/[0.07] dark:border-white/[0.08] text-center mt-5">
           <div className="w-16 h-16 rounded-2xl bg-rk-orange/10 text-rk-orange flex items-center justify-center mx-auto mb-4">
             <ClipboardList size={28} />
           </div>
