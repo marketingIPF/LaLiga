@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils'
 
 const NAV_AGENT = [
   { to: '/', label: 'Inicio', Icon: Home, end: true },
-  { to: '/ranking', label: 'Ranking', Icon: Trophy },
+  { to: '/ranking', label: 'Liga', Icon: Trophy },
   { to: '/registrar', label: 'Registrar', Icon: Plus, fab: true },
   { to: '/logros', label: 'Logros', Icon: Award },
   { to: '/perfil', label: 'Perfil', Icon: User },
@@ -13,7 +13,7 @@ const NAV_AGENT = [
 
 const NAV_ADMIN = [
   { to: '/', label: 'Inicio', Icon: Home, end: true },
-  { to: '/ranking', label: 'Ranking', Icon: Trophy },
+  { to: '/ranking', label: 'Liga', Icon: Trophy },
   { to: '/aprobaciones', label: 'Aprobar', Icon: CheckCircle2, fab: true },
   { to: '/logros', label: 'Logros', Icon: Award },
   { to: '/perfil', label: 'Perfil', Icon: User },
