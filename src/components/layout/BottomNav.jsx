@@ -47,8 +47,10 @@ export default function BottomNav() {
       className="fixed bottom-0 inset-x-0 z-40"
       style={{ paddingBottom: 'max(0.5rem, var(--safe-bottom))' }}
     >
-      <div className="mx-3 mb-2">
-        <div className={cn('relative rounded-[32px] px-2 py-2 overflow-hidden', LIQUID_GLASS)}>
+      <div className="mx-3 mb-2 relative">
+        {/* Capa de cristal — el overflow-hidden recorta el hilo de luz, pero
+            no el botón central, que vive fuera de esta capa (ver más abajo) */}
+        <div className={cn('absolute inset-0 rounded-[32px] overflow-hidden', LIQUID_GLASS)}>
           {/* Hilo de luz superior, solo en modo claro (en oscuro se ve como un halo apagado) */}
           <div
             className="absolute top-0 left-[10%] right-[10%] h-px pointer-events-none dark:opacity-40"
@@ -57,29 +59,31 @@ export default function BottomNav() {
                 'linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)',
             }}
           />
-          <div className="flex items-center justify-around relative">
-            {items.map(({ to, label, Icon, fab, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  cn(
-                    'flex flex-col items-center justify-center gap-0.5 flex-1 py-1.5',
-                    fab && 'relative -mt-7'
-                  )
-                }
-              >
-                {({ isActive }) =>
-                  fab ? (
-                    <FabButton Icon={Icon} label={label} active={isActive} />
-                  ) : (
-                    <NavItem Icon={Icon} label={label} active={isActive} />
-                  )
-                }
-              </NavLink>
-            ))}
-          </div>
+        </div>
+
+        {/* Contenido — por encima de la capa de cristal, sin recortarse */}
+        <div className="relative flex items-center justify-around px-2 py-2">
+          {items.map(({ to, label, Icon, fab, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                cn(
+                  'flex flex-col items-center justify-center gap-0.5 flex-1 py-1.5',
+                  fab && 'relative -mt-7'
+                )
+              }
+            >
+              {({ isActive }) =>
+                fab ? (
+                  <FabButton Icon={Icon} label={label} active={isActive} />
+                ) : (
+                  <NavItem Icon={Icon} label={label} active={isActive} />
+                )
+              }
+            </NavLink>
+          ))}
         </div>
       </div>
     </nav>
